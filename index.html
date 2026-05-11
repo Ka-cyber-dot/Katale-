@@ -11,7 +11,7 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background-color: #ffffff; /* Clean white background */
+            background-color: #ffffff;
             margin: 0;
             font-family: 'Arial Black', sans-serif;
             overflow: hidden;
@@ -22,29 +22,25 @@
             position: relative;
         }
 
-        /* Refined 3D Green Style - No black angles */
         .katale-text {
             font-size: 100px;
             font-weight: 900;
-            fill: #4CAF50; /* Vibrant primary green */
+            fill: #4CAF50;
             letter-spacing: 2px;
-            /* Using multiple soft green shadows to create a 3D "bezel" look */
             filter: drop-shadow(0 2px 0 #388E3C) 
                     drop-shadow(0 4px 0 #2E7D32) 
                     drop-shadow(0 6px 0 #1B5E20) 
                     drop-shadow(0 15px 15px rgba(0,0,0,0.15));
         }
 
-        /* Styled hizstar text */
         .hizstar-text {
             font-size: 18px;
-            fill: #a5d6a7; /* Light sage green for contrast */
+            fill: #a5d6a7;
             letter-spacing: 18px;
             text-transform: lowercase;
             font-weight: normal;
         }
 
-        /* The Dot - Matching the 3D green theme */
         #loading-dot {
             fill: #2E7D32;
             filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
@@ -54,9 +50,10 @@
             margin-top: 20px;
             font-family: 'Helvetica', sans-serif;
             color: #81C784;
-            font-size: 12px;
+            font-size: 14px; /* Slightly larger for readability */
             letter-spacing: 5px;
             text-transform: uppercase;
+            transition: all 0.3s ease;
         }
     </style>
 </head>
@@ -64,16 +61,9 @@
 
     <div class="logo-container">
         <svg width="600" height="500" viewBox="0 0 600 500">
-            <!-- Main Title -->
             <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
-            
-            <!-- hizstar below -->
             <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
-
-            <!-- The "Broken 8" Path preserved from previous version -->
             <path id="infinityPath" d="M 135,180 C 250,-150 250,650 465,180" fill="none" />
-
-            <!-- Animated Dot -->
             <circle id="loading-dot" r="14">
                 <animateMotion dur="3s" repeatCount="indefinite" calcMode="spline" keyTimes="0; 1" keySplines="0.4, 0, 0.6, 1">
                     <mpath href="#infinityPath" />
@@ -81,21 +71,71 @@
             </circle>
         </svg>
 
-        <div class="status" id="status-text">Connecting...</div>
+        <div class="status" id="status-text">INITIALIZING 0%</div>
     </div>
 
     <script>
         const APP_URL = "https://hizstar.onrender.com"; 
+        const statusEl = document.getElementById('status-text');
+        let progress = 0;
+
+        // Function to smoothly update the percentage text
+        function updateProgress(target) {
+            const interval = setInterval(() => {
+                if (progress < target) {
+                    progress++;
+                    statusEl.innerText = `LOADING ${progress}%`;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 30); // Speed of the text tick
+        }
 
         async function checkServer() {
-            try {
-                await fetch(APP_URL, { mode: 'no-cors' });
-                document.getElementById('status-text').innerText = "SYSTEMS LIVE";
-                setTimeout(() => { window.location.href = APP_URL; }, 1000);
-            } catch (error) {
-                setTimeout(checkServer, 3000);
+            // Step 1: Immediately jump to 50% to show activity
+            updateProgress(50);
+
+            let serverIsUp = false;
+            
+            // Step 2: Start a slow crawl toward 95% while waiting for Fetch
+            const fakeLoader = setInterval(() => {
+                if (progress < 95) {
+                    progress++;
+                    statusEl.innerText = `LOADING WAIT${progress}%...`;
+                }
+            }, 800); // Very slow creep to keep the user waiting without panic
+
+            while (!serverIsUp) {
+                try {
+                    // We use a small timeout so the fetch doesn't hang forever
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                    await fetch(APP_URL, { mode: 'no-cors', signal: controller.signal });
+                    
+                    // If fetch succeeds:
+                    serverIsUp = true;
+                    clearInterval(fakeLoader);
+                    
+                    // Step 3: Finish the progress and redirect
+                    updateProgress(100);
+                    statusEl.style.color = "#4CAF50";
+                    statusEl.style.fontWeight = "bold";
+                    statusEl.innerText=" 100%";
+                    
+                    setTimeout(() => { 
+                        window.location.href = APP_URL; 
+                    }, 800);
+
+                } catch (error) {
+                    // Server still sleeping (Render cold start)
+                    // Wait 2 seconds before trying again
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
             }
         }
+
+        // Start the process
         checkServer();
     </script>
 </body>
