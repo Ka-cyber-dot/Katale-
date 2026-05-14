@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KATALE | Hizstar</title>
     <style>
+        /* Keep your existing styles exactly as they are */
         body {
             display: flex;
             flex-direction: column;
@@ -17,9 +18,22 @@
             overflow: hidden;
         }
 
+        /* The Engine (Hidden until 100%) */
+        #app-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none; /* Hidden initially */
+            z-index: 10;
+        }
+
         .logo-container {
             text-align: center;
             position: relative;
+            z-index: 5;
         }
 
         .katale-text {
@@ -50,7 +64,7 @@
             margin-top: 20px;
             font-family: 'Helvetica', sans-serif;
             color: #81C784;
-            font-size: 14px; /* Slightly larger for readability */
+            font-size: 14px;
             letter-spacing: 5px;
             text-transform: uppercase;
             transition: all 0.3s ease;
@@ -59,7 +73,10 @@
 </head>
 <body>
 
-    <div class="logo-container">
+    <!-- The "Engine" inside the "Car" -->
+    <iframe id="app-frame" src="https://hizstar.onrender.com"></iframe>
+
+    <div class="logo-container" id="loader-ui">
         <svg width="600" height="500" viewBox="0 0 600 500">
             <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
             <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
@@ -70,16 +87,17 @@
                 </animateMotion>
             </circle>
         </svg>
-
         <div class="status" id="status-text">INITIALIZING 0%</div>
     </div>
 
     <script>
         const APP_URL = "https://hizstar.onrender.com"; 
         const statusEl = document.getElementById('status-text');
+        const appFrame = document.getElementById('app-frame');
+        const loaderUi = document.getElementById('loader-ui');
         let progress = 0;
+        let checkInterval;
 
-        // Function to smoothly update the percentage text
         function updateProgress(target) {
             const interval = setInterval(() => {
                 if (progress < target) {
@@ -88,54 +106,65 @@
                 } else {
                     clearInterval(interval);
                 }
-            }, 30); // Speed of the text tick
+            }, 30);
         }
 
         async function checkServer() {
-            // Step 1: Immediately jump to 50% to show activity
             updateProgress(50);
-
-            let serverIsUp = false;
             
-            // Step 2: Start a slow crawl toward 95% while waiting for Fetch
+            // Slow creep toward 95%
             const fakeLoader = setInterval(() => {
                 if (progress < 95) {
                     progress++;
-                    statusEl.innerText = `LOADING WAIT${progress}%...`;
+                    statusEl.innerText = `WAITING ${progress}%`;
                 }
-            }, 800); // Very slow creep to keep the user waiting without panic
+            }, 1000);
 
-            while (!serverIsUp) {
+            while (true) {
                 try {
-                    // We use a small timeout so the fetch doesn't hang forever
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-                    await fetch(APP_URL, { mode: 'no-cors', signal: controller.signal });
+                    // PING the server
+                    const response = await fetch(APP_URL, { mode: 'no-cors', signal: controller.signal });
                     
-                    // If fetch succeeds:
-                    serverIsUp = true;
+                    // SUCCESS: Server is awake!
                     clearInterval(fakeLoader);
-                    
-                    // Step 3: Finish the progress and redirect
                     updateProgress(100);
-                    statusEl.style.color = "#4CAF50";
-                    statusEl.style.fontWeight = "bold";
-                    statusEl.innerText=" 100%";
                     
-                    setTimeout(() => { 
-                        window.location.href = APP_URL; 
-                    }, 800);
+                    setTimeout(() => {
+                        loaderUi.style.display = 'none';
+                        appFrame.style.display = 'block';
+                        // Start background heartbeat to detect if it sleeps LATER
+                        startHeartbeat();
+                    }, 1000);
+                    break; 
 
                 } catch (error) {
-                    // Server still sleeping (Render cold start)
-                    // Wait 2 seconds before trying again
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Fail: Wait and try again
+                    await new Promise(res => setTimeout(res, 3000));
                 }
             }
         }
 
-        // Start the process
+        // The "Automatic" part: Watch the connection even while the app is open
+        function startHeartbeat() {
+            if (checkInterval) clearInterval(checkInterval);
+            
+            checkInterval = setInterval(async () => {
+                try {
+                    await fetch(APP_URL, { mode: 'no-cors' });
+                } catch (e) {
+                    // IF RENDER GOES TO SLEEP OR DEPLOYS:
+                    console.log("wait we are working on your attempt...");
+                    appFrame.style.display = 'none';
+                    loaderUi.style.display = 'flex';
+                    progress = 50; 
+                    checkServer(); // Restart the wake-up loop
+                }
+            }, 20000); // Check every 20 seconds
+        }
+
         checkServer();
     </script>
 </body>
