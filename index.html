@@ -92,80 +92,93 @@
 
     <script>
         const APP_URL = "https://hizstar.onrender.com"; 
-        const statusEl = document.getElementById('status-text');
-        const appFrame = document.getElementById('app-frame');
-        const loaderUi = document.getElementById('loader-ui');
-        let progress = 0;
-        let checkInterval;
+const statusEl = document.getElementById('status-text');
+const loaderUi = document.getElementById('loader-ui');
+let progress = 0;
+let checkInterval;
 
-        function updateProgress(target) {
-            const interval = setInterval(() => {
-                if (progress < target) {
-                    progress++;
-                    statusEl.innerText = `LOADING ${progress}%`;
-                } else {
-                    clearInterval(interval);
-                }
-            }, 30);
+// Function to handle the smooth percentage crawl
+function updateProgress(target) {
+    // Reset progress if we are starting a fresh wake-up
+    if(target === 50) progress = 0; 
+    
+    const interval = setInterval(() => {
+        if (progress < target) {
+            progress++;
+            statusEl.innerText = `LOADING ${progress}%`;
+        } else {
+            clearInterval(interval);
         }
+    }, 30);
+}
 
-        async function checkServer() {
-            updateProgress(50);
+async function checkServer() {
+    updateProgress(50);
+    
+    // Slow crawl toward 95% while the engine "warms up"
+    const fakeLoader = setInterval(() => {
+        if (progress < 95) {
+            progress++;
+            statusEl.innerText = `WAITING ${progress}%`;
+        }
+    }, 1200);
+
+    while (true) {
+        try {
+            // Using 'no-cors' allows us to ping even if CORS isn't set up perfectly
+            const response = await fetch(APP_URL, { mode: 'no-cors' });
             
-            // Slow creep toward 95%
-            const fakeLoader = setInterval(() => {
-                if (progress < 95) {
-                    progress++;
-                    statusEl.innerText = `WAITING ${progress}%`;
+            // If we get here, the engine is RESPONDING
+            clearInterval(fakeLoader);
+            updateProgress(100);
+            
+            setTimeout(() => {
+                loaderUi.style.display = 'none';
+                
+                // RE-CREATE THE IFRAME FRESH: 
+                // This prevents the "cached" broken screen from staying visible
+                let frame = document.getElementById('app-frame');
+                if (!frame) {
+                    frame = document.createElement('iframe');
+                    frame.id = 'app-frame';
+                    frame.src = APP_URL;
+                    document.body.appendChild(frame);
                 }
+                frame.style.display = 'block';
+                
+                startHeartbeat();
             }, 1000);
+            break; 
 
-            while (true) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-                    // PING the server
-                    const response = await fetch(APP_URL, { mode: 'no-cors', signal: controller.signal });
-                    
-                    // SUCCESS: Server is awake!
-                    clearInterval(fakeLoader);
-                    updateProgress(100);
-                    
-                    setTimeout(() => {
-                        loaderUi.style.display = 'none';
-                        appFrame.style.display = 'block';
-                        // Start background heartbeat to detect if it sleeps LATER
-                        startHeartbeat();
-                    }, 1000);
-                    break; 
-
-                } catch (error) {
-                    // Fail: Wait and try again
-                    await new Promise(res => setTimeout(res, 3000));
-                }
-            }
+        } catch (error) {
+            // Engine is still suspended or asleep
+            await new Promise(res => setTimeout(res, 3000));
         }
+    }
+}
 
-        // The "Automatic" part: Watch the connection even while the app is open
-        function startHeartbeat() {
-            if (checkInterval) clearInterval(checkInterval);
+function startHeartbeat() {
+    if (checkInterval) clearInterval(checkInterval);
+    
+    checkInterval = setInterval(async () => {
+        try {
+            // If this fetch fails, the 'catch' block triggers immediately
+            await fetch(APP_URL, { mode: 'no-cors' });
+        } catch (e) {
+            console.log("Engine Lost! Covering screen...");
             
-            checkInterval = setInterval(async () => {
-                try {
-                    await fetch(APP_URL, { mode: 'no-cors' });
-                } catch (e) {
-                    // IF RENDER GOES TO SLEEP OR DEPLOYS:
-                    console.log("wait we are working on your attempt...");
-                    appFrame.style.display = 'none';
-                    loaderUi.style.display = 'flex';
-                    progress = 50; 
-                    checkServer(); // Restart the wake-up loop
-                }
-            }, 20000); // Check every 20 seconds
+            // KILL THE IFRAME IMMEDIATELY so the user doesn't see the error
+            const frame = document.getElementById('app-frame');
+            if (frame) frame.remove(); 
+            
+            loaderUi.style.display = 'flex';
+            checkServer(); 
         }
+    }, 15000); 
+}
 
-        checkServer();
+checkServer();
+    
     </script>
 </body>
 </html>
