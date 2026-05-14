@@ -69,6 +69,25 @@
                     <mpath href="#infinityPath" />
                 </animateMotion>
             </circle>
+            <svg width="600" height="500" viewBox="0 0 600 500">
+    <!-- Branding Texts -->
+    <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
+    <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
+
+    <!-- Corrected "Broken 8" Path (Falling and Rising Curve) -->
+    <path id="infinityPath" 
+          d="M 135,180 C 250,-50 250,550 465,180" 
+          fill="none" 
+          stroke="transparent" />
+
+    <!-- The Animated Dot -->
+    <circle id="loading-dot" r="14">
+        <!-- This makes the dot actually follow the path -->
+        <animateMotion dur="3s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#infinityPath" />
+        </animateMotion>
+    </circle>
+</svg>
         </svg>
 
         <div class="status" id="status-text">INITIALIZING 0%</div>
