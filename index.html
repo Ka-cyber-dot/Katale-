@@ -165,7 +165,7 @@ function startHeartbeat() {
             // If this fetch fails, the 'catch' block triggers immediately
             await fetch(APP_URL, { mode: 'no-cors' });
         } catch (e) {
-            console.log("Engine Lost! Covering screen...");
+            console.log("we are working on your attempt ...");
             
             // KILL THE IFRAME IMMEDIATELY so the user doesn't see the error
             const frame = document.getElementById('app-frame');
