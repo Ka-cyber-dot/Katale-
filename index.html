@@ -5,48 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KATALE | Hizstar</title>
     <style>
-        /* [KEEP YOUR EXISTING CSS HERE - The Green 3D Styles] */
-        body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; background: #fff; }
-        
-        #app-frame {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            border: none;
-            z-index: 1; /* Under the loader */
-            display: none;
-        }
-
-        #loader-ui {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: white;
+        body {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 999; /* Always on top during failure */
+            height: 100vh;
+            background-color: #ffffff;
+            margin: 0;
+            font-family: 'Arial Black', sans-serif;
+            overflow: hidden;
+        }
+
+        .logo-container {
+            text-align: center;
+            position: relative;
+        }
+
+        .katale-text {
+            font-size: 100px;
+            font-weight: 900;
+            fill: #4CAF50;
+            letter-spacing: 2px;
+            filter: drop-shadow(0 2px 0 #388E3C) 
+                    drop-shadow(0 4px 0 #2E7D32) 
+                    drop-shadow(0 6px 0 #1B5E20) 
+                    drop-shadow(0 15px 15px rgba(0,0,0,0.15));
+        }
+
+        .hizstar-text {
+            font-size: 18px;
+            fill: #a5d6a7;
+            letter-spacing: 18px;
+            text-transform: lowercase;
+            font-weight: normal;
+        }
+
+        #loading-dot {
+            fill: #2E7D32;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+        }
+
+        .status {
+            margin-top: 20px;
+            font-family: 'Helvetica', sans-serif;
+            color: #81C784;
+            font-size: 14px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
         }
     </style>
 </head>
 <body>
 
-    <div id="loader-ui">
-        <svg width="400" height="300" viewBox="0 0 600 500">
-            <!-- Your KATALE SVG and "Broken 8" path here -->
+    <div class="logo-container">
+        <svg width="600" height="500" viewBox="0 0 600 500">
+            <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
+            <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
+            <path id="infinityPath" d="M 135,180 C 250,-150 250,650 465,180" fill="none" />
+            <circle id="loading-dot" r="14">
+                <animateMotion dur="3s" repeatCount="indefinite" calcMode="spline" keyTimes="0; 1" keySplines="0.4, 0, 0.6, 1">
+                    <mpath href="#infinityPath" />
+                </animateMotion>
+            </circle>
         </svg>
+
         <div class="status" id="status-text">INITIALIZING 0%</div>
     </div>
-
-    <!-- We use a wrapper to force the frame to reload -->
-    <div id="frame-wrapper" style="width:100%; height:100%;"></div>
 
     <script>
         const APP_URL = "https://hizstar.onrender.com"; 
         const statusEl = document.getElementById('status-text');
-        const loaderUi = document.getElementById('loader-ui');
-        const wrapper = document.getElementById('frame-wrapper');
         let progress = 0;
 
         function updateProgress(target) {
@@ -54,55 +84,53 @@
                 if (progress < target) {
                     progress++;
                     statusEl.innerText = `LOADING ${progress}%`;
-                } else { clearInterval(interval); }
-            }, 20);
+                } else {
+                    clearInterval(interval);
+                }
+            }, 30);
         }
 
-        async function checkEngine() {
-            // Reset UI for a fresh wake-up
-            loaderUi.style.display = 'flex';
-            wrapper.innerHTML = ''; // Kill the old frame immediately
-            progress = 0;
+        async function checkServer() {
             updateProgress(50);
 
-            let engineReady = false;
-            while (!engineReady) {
-                try {
-                    // We use 'cache: no-store' to force a real check
-                    const res = await fetch(APP_URL, { mode: 'no-cors', cache: 'no-store' });
-                    
-                    // If we reach this, the network request didn't throw an error
-                    engineReady = true;
-                    updateProgress(100);
-                    
-                    setTimeout(() => {
-                        // Create the frame ONLY when we are sure
-                        wrapper.innerHTML = `<iframe id="app-frame" src="${APP_URL}" style="width:100%; height:100%; border:none;"></iframe>`;
-                        loaderUi.style.display = 'none';
-                        startHeartbeat();
-                    }, 1000);
+            // Start a very slow crawl toward 95% to keep the user engaged
+            const fakeLoader = setInterval(() => {
+                if (progress < 95) {
+                    progress++;
+                    statusEl.innerText = `WAITING ${progress}%`;
+                }
+            }, 1500);
 
-                } catch (e) {
-                    // Engine is dead/suspended - Wait 4 seconds and retry
-                    statusEl.innerText = "WAITING FOR ENGINE...";
-                    await new Promise(r => setTimeout(r, 4000));
+            while (true) {
+                try {
+                    // Try to reach the engine
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                    // We use 'no-cors' to avoid browser security blocks during the check
+                    await fetch(APP_URL, { mode: 'no-cors', signal: controller.signal });
+                    
+                    // SUCCESS: The engine is awake
+                    clearInterval(fakeLoader);
+                    updateProgress(100);
+                    statusEl.style.color = "#4CAF50";
+                    statusEl.innerText = "ENGINE READY 100%";
+
+                    // Automatic launch
+                    setTimeout(() => {
+                        window.location.replace(APP_URL); 
+                    }, 800);
+                    break;
+
+                } catch (error) {
+                    // Fail: Engine is still sleeping or suspended
+                    // Wait 3 seconds and try again automatically
+                    await new Promise(resolve => setTimeout(resolve, 3000));
                 }
             }
         }
 
-        function startHeartbeat() {
-            // Check every 10 seconds. If Render sleeps, we cover the screen.
-            const hb = setInterval(async () => {
-                try {
-                    const check = await fetch(APP_URL, { mode: 'no-cors', cache: 'no-store' });
-                } catch (e) {
-                    clearInterval(hb);
-                    checkEngine(); // Trigger the loader and restart check
-                }
-            }, 10000);
-        }
-
-        checkEngine();
+        checkServer();
     </script>
 </body>
 </html>
