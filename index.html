@@ -118,7 +118,7 @@
             const fakeLoader = setInterval(() => {
                 if (progress < 98) {
                     progress++;
-                    statusEl.innerText = `CONNECTING ${progress}%`;
+                    statusEl.innerText =`wait${progress}%`;
                 }
             }, 800);
 
@@ -128,7 +128,7 @@
                     
                     // SUCCESS: Server is awake!
                     clearInterval(fakeLoader);
-                    statusEl.innerText = "ENGINE READY 100%";
+                    statusEl.innerText = " READY to go 100%";
                     statusEl.style.color = "#4CAF50";
 
                     // Load the content into the iframe
