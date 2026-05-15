@@ -15,7 +15,7 @@
             overflow: hidden;
         }
 
-        /* The Green Masking Screen */
+        /* The Masking Screen */
         #loader-container {
             position: fixed;
             top: 0;
@@ -28,9 +28,10 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
+            transition: opacity 0.4s ease;
         }
 
-        /* The App Window - Kept hidden away */
+        /* The App Frame Container */
         #app-frame {
             position: absolute;
             top: 0;
@@ -73,7 +74,7 @@
 </head>
 <body>
 
-    <!-- 1. The Masking Loader Screen -->
+    <!-- The Protective Cover Layout -->
     <div id="loader-container">
         <svg width="320" height="260" viewBox="0 0 600 500">
             <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
@@ -88,12 +89,12 @@
         <div id="status-text">CONNECTING 0%</div>
     </div>
 
-    <!-- 2. Strict Application Route Frame -->
+    <!-- Embedded Application Screen -->
     <iframe id="app-frame" src=""></iframe>
 
     <script>
-        // TARGETING THE SECRET PATH ONLY
-        const STRICT_URL = "https://hizstar.onrender.com/live";
+        const BASE_URL = "https://hizstar.onrender.com";
+        const SIGNAL_URL = BASE_URL + "/api/heartbeat";
         
         const loader = document.getElementById('loader-container');
         const frame = document.getElementById('app-frame');
@@ -101,7 +102,7 @@
 
         let progress = 0;
         let fakeLoader;
-        let isSecured = false;
+        let appLoaded = false;
 
         function runPercentage(targetSpeed, maxPercent) {
             clearInterval(fakeLoader);
@@ -113,40 +114,62 @@
             }, targetSpeed);
         }
 
-        // Start loading simulation graphics smoothly
-        runPercentage(20, 50);
-        
-        setTimeout(() => {
-            runPercentage(400, 95);
-        }, 1000);
+        // Initialize display loaders
+        runPercentage(15, 50);
+        setTimeout(() => { runPercentage(400, 95); }, 800);
 
-        // Inject the strict sub-route link into the framework window
-        frame.src = STRICT_URL;
+        async function listenToSignal() {
+            try {
+                // Fetch the small JSON payload from your route
+                const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
+                const data = await response.json();
 
-        // Validation gate listener
-        frame.onload = function() {
-            // Safety measure: We look at how long it took. 
-            // Render suspension errors serve instant fake payloads. Your real server takes time.
-            isSecured = true;
-            
-            clearInterval(fakeLoader);
-            statusText.innerText = "CONNECTING 100%";
+                // STAGE 3 VALIDATION: Is the signature exactly yours?
+                if (data && data.signature === "HIZSTAR_ENGINE_SECURE_2026") {
+                    
+                    // If it is the first time finding the signal, launch the frame!
+                    if (!appLoaded) {
+                        appLoaded = true;
+                        clearInterval(fakeLoader);
+                        statusText.innerText = "CONNECTING 100%";
+                        
+                        const currentQuery = window.location.search;
+                        frame.src = BASE_URL + (currentQuery || "/");
 
-            setTimeout(() => {
-                frame.style.display = "block";
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 400);
-            }, 500);
-        };
+                        frame.onload = function() {
+                            setTimeout(() => {
+                                frame.style.display = "block";
+                                loader.style.opacity = '0';
+                                setTimeout(() => { loader.style.display = 'none'; }, 400);
+                            }, 300);
+                        };
+                    }
+                } else {
+                    // Wrong signature (Render served an error page instead of your app data)
+                    throw new Error("Invalid Engine Signature");
+                }
 
-        // Fallback Protection: If the frame loads a false/suspended root layout, 
-        // or gets stuck, it stays safely locked on 95% under your premium green cover.
-        setTimeout(() => {
-            if (!isSecured) {
-                console.log("Strict Mode: Server failed path validation checks.");
-                statusText.innerText = "CONNECTING 95%";
+            } catch (err) {
+                // SIGNAL LOST: Either suspended, sleeping, or crashed!
+                console.log("Signal Dropped. Safe Mode Engaged.");
+                
+                // Instantly force back the green masking sheet!
+                appLoaded = false;
+                frame.style.display = "none";
+                loader.style.display = "flex";
+                loader.style.opacity = "1";
+                
+                // Keep the percentage showing a constant retry sync status
+                progress = 95;
+                statusText.innerText = "RETRIEVING SIGNAL 95%";
             }
-        }, 8000);
+
+            // Loop forever: Check the live signature signal pulse every 4.5 seconds
+            setTimeout(listenToSignal, 4500);
+        }
+
+        // Initialize Engine Monitoring System
+        listenToSignal();
     </script>
 </body>
 </html>
