@@ -7,12 +7,12 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root { --k-green: #2ecc71; }
-        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 25px; margin: 0; }
         #receipt-box { background: white; width: 100%; max-width: 360px; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); box-sizing: border-box; }
         .header { text-align: center; border-bottom: 3px solid var(--k-green); padding-bottom: 12px; margin-bottom: 15px; }
-        #user-banner { max-width: 100%; max-height: 90px; margin-bottom: 10px; border-radius: 6px; object-fit: contain; display: block; margin-left: auto; margin-right: auto; }
+        #user-banner { max-width: 100%; max-height: 100px; margin-bottom: 10px; border-radius: 6px; object-fit: contain; display: block; margin-left: auto; margin-right: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-        th { text-align: left; color: var(--k-green); border-bottom: 2px solid #eee; padding-bottom: 5px; text-transform: uppercase; font-size: 11px; }
+        th { text-align: left; color: var(--k-green); border-bottom: 2px solid #eee; padding-bottom: 5px; font-size: 11px; text-transform: uppercase; }
         td { padding: 10px 0; border-bottom: 1px solid #f9f9f9; }
         .total-row { background: var(--k-green); color: white; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; margin-top: 20px; font-weight: bold; font-size: 16px; }
         #share-btn { margin-top: 20px; background: #25D366; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; width: 100%; max-width: 360px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(37,211,102,0.3); }
@@ -53,18 +53,19 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         
-        // 1. Process and load User Banner
+        // 1. Process and load the User Cloudinary Banner
         const logo = urlParams.get('logo');
-        if(logo && logo.trim() !== "") {
+        if(logo && logo.trim() !== "" && logo !== "undefined") {
             document.getElementById('user-banner').src = logo;
+            document.getElementById('user-banner').style.display = 'block';
         }
 
-        // 2. Load Text Basics
+        // 2. Load Invoice Variables
         document.getElementById('out-customer').innerText = urlParams.get('customer') || "Walk-in";
         document.getElementById('out-total').innerText = urlParams.get('total');
         document.getElementById('out-date').innerText = urlParams.get('date');
 
-        // 3. Unpack and display Items correctly
+        // 3. Compile items safely (Solves the missing items bug)
         try {
             const encodedItems = urlParams.get('items');
             if(encodedItems) {
@@ -84,12 +85,12 @@
                 });
                 document.getElementById('out-items').innerHTML = html;
             }
-        } catch(e) { console.error("Item processing failed:", e); }
+        } catch(e) { console.error("Item parsing failed:", e); }
 
-        // 4. Process image and trigger Native Browser Share Tray
+        // 4. Trigger Native Browser Sharing Layer
         async function generateAndShare() {
             const btn = document.getElementById('share-btn');
-            btn.innerText = "⏳ Compiling Canvas...";
+            btn.innerText = "⏳ Compiling...";
             
             try {
                 const canvas = await html2canvas(document.getElementById('receipt-box'), {
@@ -104,14 +105,14 @@
                     await navigator.share({ files: [file], title: 'Katale Invoice' });
                     btn.innerHTML = "📲 SHARE RECEIPT IMAGE";
                 } else {
-                    alert("Sharing blocked by browser interface configuration. Please take a manual screenshot!");
+                    alert("Please take a screenshot; sharing is restricted in this engine window.");
                     btn.innerHTML = "📲 SHARE RECEIPT IMAGE";
                 }
             } catch (err) {
-                alert("Error compilation workflow: " + err.message);
+                alert("Compilation failure: " + err.message);
                 btn.innerHTML = "📲 SHARE RECEIPT IMAGE";
             }
         }
     </script>
 </body>
-    </html>
+</html>
