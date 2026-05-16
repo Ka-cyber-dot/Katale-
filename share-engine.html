@@ -7,21 +7,15 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         :root { --k-green: #2ecc71; }
-        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        
-        #receipt-box { background: white; width: 360px; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        .header { text-align: center; border-bottom: 3px solid var(--k-green); padding-bottom: 10px; margin-bottom: 15px; }
-        
-        /* Fixed User Banner/Icon Display */
-        #user-banner { max-width: 100%; max-height: 100px; margin-bottom: 10px; border-radius: 8px; object-fit: contain; }
-        
+        body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        #receipt-box { background: white; width: 100%; max-width: 360px; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); box-sizing: border-box; }
+        .header { text-align: center; border-bottom: 3px solid var(--k-green); padding-bottom: 12px; margin-bottom: 15px; }
+        #user-banner { max-width: 100%; max-height: 90px; margin-bottom: 10px; border-radius: 6px; object-fit: contain; display: block; margin-left: auto; margin-right: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-        th { text-align: left; color: var(--k-green); border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        td { padding: 8px 0; border-bottom: 1px solid #f9f9f9; }
-
-        .total-row { background: var(--k-green); color: white; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; margin-top: 20px; font-weight: bold; }
-        
-        #share-btn { margin-top: 25px; background: #25D366; color: white; border: none; padding: 15px; border-radius: 30px; font-weight: bold; width: 100%; cursor: pointer; }
+        th { text-align: left; color: var(--k-green); border-bottom: 2px solid #eee; padding-bottom: 5px; text-transform: uppercase; font-size: 11px; }
+        td { padding: 10px 0; border-bottom: 1px solid #f9f9f9; }
+        .total-row { background: var(--k-green); color: white; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; margin-top: 20px; font-weight: bold; font-size: 16px; }
+        #share-btn { margin-top: 20px; background: #25D366; color: white; border: none; padding: 16px; border-radius: 30px; font-weight: bold; width: 100%; max-width: 360px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(37,211,102,0.3); }
     </style>
 </head>
 <body>
@@ -29,10 +23,10 @@
     <div id="receipt-box">
         <div class="header">
             <img id="user-banner" src="" alt="" onerror="this.style.display='none'">
-            <h2 style="margin:0; letter-spacing:1px; color:#333;">KATALE STORE</h2>
+            <h2 style="margin:0; letter-spacing:1px; color:#111;">KATALE STORE</h2>
         </div>
 
-        <div style="font-size:12px; color:#777; display:flex; justify-content:space-between; margin-bottom: 10px;">
+        <div style="font-size:12px; color:#666; display:flex; justify-content:space-between; margin-bottom: 10px;">
             <span><b>Client:</b> <span id="out-customer"></span></span>
             <span id="out-date"></span>
         </div>
@@ -59,16 +53,18 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         
-        // 1. Load User Banner/Logo
+        // 1. Process and load User Banner
         const logo = urlParams.get('logo');
-        if(logo) document.getElementById('user-banner').src = logo;
+        if(logo && logo.trim() !== "") {
+            document.getElementById('user-banner').src = logo;
+        }
 
-        // 2. Load Basics
-        document.getElementById('out-customer').innerText = urlParams.get('customer');
+        // 2. Load Text Basics
+        document.getElementById('out-customer').innerText = urlParams.get('customer') || "Walk-in";
         document.getElementById('out-total').innerText = urlParams.get('total');
         document.getElementById('out-date').innerText = urlParams.get('date');
 
-        // 3. Decode and Display Items (Fixing the "Missing Items" issue)
+        // 3. Unpack and display Items correctly
         try {
             const encodedItems = urlParams.get('items');
             if(encodedItems) {
@@ -77,32 +73,45 @@
                 
                 let html = "";
                 itemsArray.forEach(itemStr => {
-                    const [name, qty, total] = itemStr.split('::');
-                    html += `<tr>
-                        <td>${name}</td>
-                        <td style="text-align:center">${qty}</td>
-                        <td style="text-align:right"><b>${total}</b></td>
-                    </tr>`;
+                    if(itemStr.trim() !== "") {
+                        const [name, qty, total] = itemStr.split('::');
+                        html += `<tr>
+                            <td>${name}</td>
+                            <td style="text-align:center">${qty}</td>
+                            <td style="text-align:right"><b>$${total}</b></td>
+                        </tr>`;
+                    }
                 });
                 document.getElementById('out-items').innerHTML = html;
             }
-        } catch(e) { console.error("Error parsing items:", e); }
+        } catch(e) { console.error("Item processing failed:", e); }
 
-        // 4. Share Function
+        // 4. Process image and trigger Native Browser Share Tray
         async function generateAndShare() {
-            const canvas = await html2canvas(document.getElementById('receipt-box'), {
-                scale: 3,
-                useCORS: true
-            });
-            const blob = await (await fetch(canvas.toDataURL("image/png"))).blob();
-            const file = new File([blob], 'Katale_Receipt.png', { type: 'image/png' });
+            const btn = document.getElementById('share-btn');
+            btn.innerText = "⏳ Compiling Canvas...";
+            
+            try {
+                const canvas = await html2canvas(document.getElementById('receipt-box'), {
+                    scale: 3,
+                    useCORS: true,
+                    allowTaint: true
+                });
+                const blob = await (await fetch(canvas.toDataURL("image/png"))).blob();
+                const file = new File([blob], 'Katale_Receipt.png', { type: 'image/png' });
 
-            if (navigator.share) {
-                navigator.share({ files: [file], title: 'Receipt' });
-            } else {
-                alert("Sharing not supported in this browser mode. Please take a screenshot.");
+                if (navigator.share) {
+                    await navigator.share({ files: [file], title: 'Katale Invoice' });
+                    btn.innerHTML = "📲 SHARE RECEIPT IMAGE";
+                } else {
+                    alert("Sharing blocked by browser interface configuration. Please take a manual screenshot!");
+                    btn.innerHTML = "📲 SHARE RECEIPT IMAGE";
+                }
+            } catch (err) {
+                alert("Error compilation workflow: " + err.message);
+                btn.innerHTML = "📲 SHARE RECEIPT IMAGE";
             }
         }
     </script>
 </body>
-            </html>
+    </html>
