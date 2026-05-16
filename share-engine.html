@@ -9,10 +9,11 @@
         :root { --k-green: #2ecc71; }
         body { font-family: sans-serif; background: #f4f4f9; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         
-        /* The Visual Receipt */
         #receipt-box { background: white; width: 360px; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
         .header { text-align: center; border-bottom: 3px solid var(--k-green); padding-bottom: 10px; margin-bottom: 15px; }
-        #user-icon { max-height: 60px; margin-bottom: 5px; border-radius: 5px; }
+        
+        /* Fixed User Banner/Icon Display */
+        #user-banner { max-width: 100%; max-height: 100px; margin-bottom: 10px; border-radius: 8px; object-fit: contain; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
         th { text-align: left; color: var(--k-green); border-bottom: 1px solid #eee; padding-bottom: 5px; }
@@ -20,19 +21,18 @@
 
         .total-row { background: var(--k-green); color: white; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; margin-top: 20px; font-weight: bold; }
         
-        /* The Missing Share Button */
-        #share-trigger-btn { margin-top: 25px; background: #25D366; color: white; border: none; padding: 15px 40px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; display: none; width: 100%; }
+        #share-btn { margin-top: 25px; background: #25D366; color: white; border: none; padding: 15px; border-radius: 30px; font-weight: bold; width: 100%; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="receipt-box">
         <div class="header">
-            <img id="user-icon" src="" alt="">
-            <h2 style="margin:0; letter-spacing:1px;">KATALE</h2>
+            <img id="user-banner" src="" alt="" onerror="this.style.display='none'">
+            <h2 style="margin:0; letter-spacing:1px; color:#333;">KATALE STORE</h2>
         </div>
 
-        <div style="font-size:12px; color:#777; display:flex; justify-content:space-between;">
+        <div style="font-size:12px; color:#777; display:flex; justify-content:space-between; margin-bottom: 10px;">
             <span><b>Client:</b> <span id="out-customer"></span></span>
             <span id="out-date"></span>
         </div>
@@ -40,7 +40,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Item</th>
+                    <th>Item Description</th>
                     <th style="text-align:center">Qty</th>
                     <th style="text-align:right">Total</th>
                 </tr>
@@ -49,71 +49,60 @@
         </table>
 
         <div class="total-row">
-            <span>GRAND TOTAL</span>
+            <span>TOTAL PAID</span>
             <span id="out-total"></span>
         </div>
     </div>
 
-    <button id="share-trigger-btn" onclick="startSharing()">📲 SHARE ON WHATSAPP</button>
-    <p id="status-text" style="color:#888; font-size:13px; margin-top:15px;">Compiling receipt image...</p>
+    <button id="share-btn" onclick="generateAndShare()">📲 SHARE RECEIPT IMAGE</button>
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         
-        // 1. Load the User Icon (The missing image)
-        const logoUrl = urlParams.get('logo');
-        if(logoUrl) document.getElementById('user-icon').src = logoUrl;
-        else document.getElementById('user-icon').style.display = 'none';
+        // 1. Load User Banner/Logo
+        const logo = urlParams.get('logo');
+        if(logo) document.getElementById('user-banner').src = logo;
 
-        // 2. Load Customer & Totals
+        // 2. Load Basics
         document.getElementById('out-customer').innerText = urlParams.get('customer');
-        document.getElementById('out-total').innerText = "$" + urlParams.get('total');
+        document.getElementById('out-total').innerText = urlParams.get('total');
         document.getElementById('out-date').innerText = urlParams.get('date');
 
-        // 3. Compile the items (The missing items)
+        // 3. Decode and Display Items (Fixing the "Missing Items" issue)
         try {
-            const decodedItems = atob(urlParams.get('items')).split(';');
-            decodedItems.forEach(item => {
-                const [name, qty, total] = item.split('|');
-                document.getElementById('out-items').innerHTML += `
-                    <tr>
+            const encodedItems = urlParams.get('items');
+            if(encodedItems) {
+                const decodedStr = decodeURIComponent(escape(atob(encodedItems)));
+                const itemsArray = decodedStr.split('||');
+                
+                let html = "";
+                itemsArray.forEach(itemStr => {
+                    const [name, qty, total] = itemStr.split('::');
+                    html += `<tr>
                         <td>${name}</td>
                         <td style="text-align:center">${qty}</td>
-                        <td style="text-align:right"><b>$${total}</b></td>
+                        <td style="text-align:right"><b>${total}</b></td>
                     </tr>`;
-            });
-        } catch(e) { console.error("Error loading items"); }
+                });
+                document.getElementById('out-items').innerHTML = html;
+            }
+        } catch(e) { console.error("Error parsing items:", e); }
 
-        // 4. Show the button once the page is ready
-        window.onload = () => {
-            document.getElementById('share-trigger-btn').style.display = 'block';
-            document.getElementById('status-text').innerText = "Ready to share!";
-        };
-
-        // 5. The Sharing Logic
-        async function startSharing() {
-            const btn = document.getElementById('share-trigger-btn');
-            btn.innerText = "⏳ Processing...";
-            
+        // 4. Share Function
+        async function generateAndShare() {
             const canvas = await html2canvas(document.getElementById('receipt-box'), {
                 scale: 3,
                 useCORS: true
             });
-
             const blob = await (await fetch(canvas.toDataURL("image/png"))).blob();
             const file = new File([blob], 'Katale_Receipt.png', { type: 'image/png' });
 
             if (navigator.share) {
-                await navigator.share({
-                    files: [file],
-                    title: 'Receipt from Katale',
-                    text: 'Here is your sales receipt.'
-                });
-                btn.innerText = "📲 SHARE ON WHATSAPP";
+                navigator.share({ files: [file], title: 'Receipt' });
             } else {
-                alert("Please take a screenshot; sharing is not supported on this browser.");
+                alert("Sharing not supported in this browser mode. Please take a screenshot.");
             }
         }
     </script>
 </body>
-                </html>
+            </html>
