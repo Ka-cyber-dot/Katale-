@@ -93,7 +93,7 @@
     <iframe id="app-frame" src=""></iframe>
 
     <script>
-        const BASE_URL = "https://hizstar.onrender.com";
+        const BASE_URL = "https://My-businessi-app.onrender.com";
         const SIGNAL_URL = BASE_URL + "/api/heartbeat";
         
         const loader = document.getElementById('loader-container');
@@ -109,7 +109,7 @@
             fakeLoader = setInterval(() => {
                 if (progress < maxPercent) {
                     progress++;
-                    statusText.innerText = `CONNECTING ${progress}%`;
+                    statusText.innerText = `prepairing ${progress}%`;
                 }
             }, targetSpeed);
         }
@@ -131,7 +131,7 @@
                     if (!appLoaded) {
                         appLoaded = true;
                         clearInterval(fakeLoader);
-                        statusText.innerText = "CONNECTING 100%";
+                        statusText.innerText = "work space open 100%";
                         
                         const currentQuery = window.location.search;
                         frame.src = BASE_URL + (currentQuery || "/");
@@ -161,7 +161,7 @@
                 
                 // Keep the percentage showing a constant retry sync status
                 progress = 95;
-                statusText.innerText = "RETRIEVING SIGNAL 95%";
+                statusText.innerText = " almost ready 95%";
             }
 
             // Loop forever: Check the live signature signal pulse every 4.5 seconds
