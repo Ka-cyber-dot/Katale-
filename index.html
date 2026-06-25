@@ -92,84 +92,68 @@
     <!-- Embedded Application Screen -->
     <iframe id="app-frame" src=""></iframe>
 
-    <script>
-        const BASE_URL = "https://My-businessi-app.onrender.com";
-        const SIGNAL_URL = BASE_URL + "/api/heartbeat";
-        
-        const loader = document.getElementById('loader-container');
-        const frame = document.getElementById('app-frame');
-        const statusText = document.getElementById('status-text');
+<script>
+    const BASE_URL = "https://My-businessi-app.onrender.com";
+    const SIGNAL_URL = BASE_URL + "/api/heartbeat";
+    
+    const loader = document.getElementById('loader-container');
+    const frame = document.getElementById('app-frame');
+    const statusText = document.getElementById('status-text');
 
-        let progress = 0;
-        let fakeLoader;
-        let appLoaded = false;
+    let progress = 0;
+    let fakeLoader;
+    let appLoaded = false;
+    let pollInterval; // Store the interval ID
 
-        function runPercentage(targetSpeed, maxPercent) {
-            clearInterval(fakeLoader);
-            fakeLoader = setInterval(() => {
-                if (progress < maxPercent) {
-                    progress++;
-                    statusText.innerText = `prepairing ${progress}%`;
-                }
-            }, targetSpeed);
-        }
-
-        // Initialize display loaders
-        runPercentage(15, 50);
-        setTimeout(() => { runPercentage(400, 95); }, 800);
-
-        async function listenToSignal() {
-            try {
-                // Fetch the small JSON payload from your route
-                const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
-                const data = await response.json();
-
-                // STAGE 3 VALIDATION: Is the signature exactly yours?
-                if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
-                    
-                    // If it is the first time finding the signal, launch the frame!
-                    if (!appLoaded) {
-                        appLoaded = true;
-                        clearInterval(fakeLoader);
-                        statusText.innerText = "work space open 100%";
-                        
-                        const currentQuery = window.location.search;
-                        frame.src = BASE_URL + (currentQuery || "/");
-
-                        frame.onload = function() {
-                            setTimeout(() => {
-                                frame.style.display = "block";
-                                loader.style.opacity = '0';
-                                setTimeout(() => { loader.style.display = 'none'; }, 400);
-                            }, 300);
-                        };
-                    }
-                } else {
-                    // Wrong signature (Render served an error page instead of your app data)
-                    throw new Error("Invalid Engine Signature");
-                }
-
-            } catch (err) {
-                // SIGNAL LOST: Either suspended, sleeping, or crashed!
-                console.log("Signal Dropped. Safe Mode Engaged.");
-                
-                // Instantly force back the green masking sheet!
-                appLoaded = false;
-                frame.style.display = "none";
-                loader.style.display = "flex";
-                loader.style.opacity = "1";
-                
-                // Keep the percentage showing a constant retry sync status
-                progress = 95;
-                statusText.innerText = " almost ready 95%";
+    function runPercentage(targetSpeed, maxPercent) {
+        clearInterval(fakeLoader);
+        fakeLoader = setInterval(() => {
+            if (progress < maxPercent) {
+                progress++;
+                statusText.innerText = `Preparing... ${progress}%`;
             }
+        }, targetSpeed);
+    }
 
-            // Loop forever: Check the live signature signal pulse every 4.5 seconds
-            setTimeout(listenToSignal, 4500);
+    runPercentage(15, 50);
+    setTimeout(() => { runPercentage(400, 95); }, 800);
+
+    async function listenToSignal() {
+        try {
+            const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
+            const data = await response.json();
+
+            if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
+                if (!appLoaded) {
+                    appLoaded = true;
+                    clearInterval(fakeLoader);
+                    statusText.innerText = "Work space open 100%";
+                    
+                    frame.src = BASE_URL + (window.location.search || "/");
+
+                    frame.onload = function() {
+                        frame.style.display = "block";
+                        loader.style.opacity = '0';
+                        setTimeout(() => { loader.style.display = 'none'; }, 400);
+                    };
+                }
+                // IMPORTANT: Do not set another timeout here. 
+                // We stop polling once the app is loaded.
+            } else {
+                throw new Error("Invalid Engine Signature");
+            }
+        } catch (err) {
+            console.log("Signal lost, retrying...");
+            if (!appLoaded) {
+                // Only reset the loader if we haven't successfully loaded the app yet
+                progress = 95;
+                statusText.innerText = "Connecting... 95%";
+                setTimeout(listenToSignal, 4500);
+            }
         }
+    }
 
-        // Initialize Engine Monitoring System
-        listenToSignal();
-    </script>
+    listenToSignal();
+</script>
 </body>
 </html>
