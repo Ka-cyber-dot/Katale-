@@ -100,51 +100,33 @@
     const frame = document.getElementById('app-frame');
     const statusText = document.getElementById('status-text');
 
-    let appInitialized = false;
-
-    async function monitorEngine() {
+    async function tryLoadApp() {
         try {
+            console.log("Checking heartbeat...");
             const response = await fetch(`${SIGNAL_URL}?t=${new Date().getTime()}`);
             const data = await response.json();
 
             if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
-                // If the signal is alive
-                if (!appInitialized) {
-                    console.log("Signal acquired. Launching workspace...");
+                if (frame.src === "") {
+                    console.log("Signal alive. Loading App...");
                     frame.src = BASE_URL + (window.location.search || "/");
-                    appInitialized = true;
-                    
-                    frame.onload = () => {
-                        frame.style.display = "block";
-                        loader.style.opacity = '0';
-                        setTimeout(() => { loader.style.display = 'none'; }, 500);
-                    };
                 }
-                // If already initialized, we keep the frame visible
-                statusText.innerText = "Connection Stable";
-            } else {
-                throw new Error("Signal signature mismatch");
+                
+                // Show frame
+                frame.style.display = "block";
+                loader.style.opacity = '0';
+                setTimeout(() => { loader.style.display = 'none'; }, 500);
             }
         } catch (err) {
-            // If the signal is lost or server is sleeping
-            console.log("Signal lost. Standby mode active...");
-            
-            // Only show loader if we haven't successfully loaded the app yet
-            if (!appInitialized) {
-                loader.style.display = "flex";
-                loader.style.opacity = "1";
-                statusText.innerText = "Reconnecting to server...";
-            }
-            // If the app IS already loaded, we keep it visible in the background 
-            // while we silently poll for the signal to return
+            console.error("App load failed or server sleeping:", err);
+            statusText.innerText = "SERVER SLEEPING - WAKING UP...";
+            // Keep polling
+            setTimeout(tryLoadApp, 5000);
         }
-
-        // Poll every 5 seconds to keep the connection alive
-        setTimeout(monitorEngine, 5000);
     }
 
-    // Start the system
-    monitorEngine();
+    // Initial check
+    tryLoadApp();
 </script>
 </body>
 </html>
