@@ -94,7 +94,7 @@
     <!-- Embedded Application Screen -->
     <iframe id="app-frame" src=""></iframe>
 
-    <script>
+   <script>
         const BASE_URL = "https://my-businessi-app.onrender.com";
         const SIGNAL_URL = BASE_URL + "/api/heartbeat";
         
@@ -115,41 +115,36 @@
             fakeLoader = setInterval(() => {
                 if (progress < maxPercent) {
                     progress++;
-                    statusText.innerText = `${messagePrefix || "prepairing make sure your internet is stable"} ${progress}%`;
+                    statusText.innerText = `${messagePrefix || "preparing make sure your internet is stable"} ${progress}%`;
                 }
             }, targetSpeed);
         }
 
-        // Initialize early visual percentage behaviors
-        runPercentage(15, 50);
-        setTimeout(() => { runPercentage(400, 90); }, 800);
+        // Initialize visual loading steps cleanly
+        runPercentage(30, 50);
+        setTimeout(() => { runPercentage(150, 90); }, 600);
 
         async function listenToSignal() {
             try {
-                // If it takes longer than 90% and hasn't loaded yet, Render is waking up!
                 if (!appLoaded && progress >= 90) {
-                    runPercentage(1200, 98, "waking up digital storefront (please wait)...");
+                    runPercentage(800, 98, "waking up digital storefront (please wait)...");
                 }
 
-                // Fetch the small JSON verification payload from Render
                 const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
                 const data = await response.json();
 
-                // Check server signature engine integrity
                 if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
-                    
                     if (!appLoaded) {
                         appLoaded = true;
                         clearInterval(fakeLoader);
                         statusText.innerText = "workspace open 100%";
                         
-                        // Clean up path variations if running out of a GitHub project subdirectory container
                         let cleanRoute = sharedPath;
                         if (cleanRoute.startsWith('/Katale-')) {
                             cleanRoute = cleanRoute.replace('/Katale-', '');
                         }
 
-                        // Combine path logic seamlessly to redirect the iframe to the shared store profile
+                        // Combine custom routing strings to iframe source targets
                         if (cleanRoute.includes('/user/')) {
                             frame.src = BASE_URL + cleanRoute + sharedQuery;
                         } else {
@@ -160,7 +155,8 @@
                             setTimeout(() => {
                                 frame.style.display = "block";
                                 loader.style.opacity = '0';
-                                setTimeout(() => { loader.style.display = 'none'; }, 0.4s);
+                                // FIXED: Changed 0.4s to 400 milliseconds to avoid script crashes
+                                setTimeout(() => { loader.style.display = 'none'; }, 400); 
                             }, 300);
                         };
                     }
@@ -169,9 +165,7 @@
                 }
 
             } catch (err) {
-                console.log("Signal Dropped. Safe Mode Engaged.");
-                
-                // Keep the protective cover active if server connection drops or is booting
+                console.log("Signal Dropped. Retrying sync...");
                 appLoaded = false;
                 frame.style.display = "none";
                 loader.style.display = "flex";
@@ -181,12 +175,11 @@
                 statusText.innerText = "waking up digital storefront (please wait)... 95%";
             }
 
-            // Keep tracking background signal pulses every 4.5 seconds
             setTimeout(listenToSignal, 4500);
         }
 
-        // Run Engine Monitoring
         listenToSignal();
     </script>
+       
 </body>
 </html>
