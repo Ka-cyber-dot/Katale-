@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KATALE</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background-color: #ffffff;
+            font-family: 'Arial Black', sans-serif;
+            overflow: hidden;
+        }
+        /* The Masking Screen */
+        #loader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.4s ease;
+        }
+        /* The App Frame Container */
+        #app-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+            z-index: 1;
+        }
+        .katale-text {
+            font-size: 70px;
+            font-weight: 900;
+            fill: #4CAF50;
+            letter-spacing: 2px;
+            filter: drop-shadow(0 2px 0 #388E3C) 
+                    drop-shadow(0 4px 0 #2E7D32) 
+                    drop-shadow(0 12px 10px rgba(0,0,0,0.15));
+        }
+        .hizstar-text {
+            font-size: 14px;
+            fill: #a5d6a7;
+            letter-spacing: 10px;
+            text-transform: lowercase;
+        }
+        #status-text {
+            margin-top: 15px;
+            font-family: 'Helvetica', sans-serif;
+            color: #4CAF50;
+            font-size: 13px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-align: center;
+            padding: 0 20px;
+        }
+        #loading-dot { fill: #2E7D32; }
+    </style>
+</head>
+<body>
+    <div id="loader-container">
+        <svg width="320" height="260" viewBox="0 0 600 500">
+            <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
+            <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
+            <path id="infinityPath" d="M 135,180 C 250,-50 250,550 465,180" fill="none" stroke="transparent" />
+            <circle id="loading-dot" r="14">
+                <animateMotion dur="2.2s" repeatCount="indefinite" rotate="auto">
+                    <mpath href="#infinityPath" />
+                </animateMotion>
+            </circle>
+        </svg>
+        <div id="status-text">CONNECTING 0%</div>
+    </div>
+
+    <iframe id="app-frame" src=""></iframe>
+
+    <script>
+        const BASE_URL = "https://my-businessi-app.onrender.com";
+        const SIGNAL_URL = BASE_URL + "/api/heartbeat";
+                
+        const loader = document.getElementById('loader-container');
+        const frame = document.getElementById('app-frame');
+        const statusText = document.getElementById('status-text');
+
+        let progress = 0;
+        let fakeLoader;
+        let appLoaded = false;
+        let knownMessageIds = [];
+        let isFirstLoad = true;
+
+        // Capture incoming paths and dynamic user IDs passed via GitHub Pages
+        const sharedPath = window.location.pathname;
+        const sharedQuery = window.location.search;
+
+        function runPercentage(targetSpeed, maxPercent, messagePrefix) {
+            clearInterval(fakeLoader);
+            fakeLoader = setInterval(() => {
+                if (progress < maxPercent) {
+                    progress++;
+                    statusText.innerText = `${messagePrefix || "preparing"} ${progress}%`;
+                }
+            }, targetSpeed);
+        }
+
+        // Initialize display loaders
+        runPercentage(15, 50);
+        setTimeout(() => { runPercentage(400, 90); }, 800);
+
+        async function listenToSignal() {
+            try {
+                // If it hangs here, Render is waking up from sleep mode
+                if (!appLoaded && progress >= 90) {
+                    runPercentage(1000, 98, "waking up digital storefront (please wait)...");
+                }
+
+                const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
+                const data = await response.json();
+
+                if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
+                    if (!appLoaded) {
+                        appLoaded = true;
+                        clearInterval(fakeLoader);
+                        statusText.innerText = "work space open 100%";
+
+                        // Clean out GitHub project subdirectory names if present
+                        let cleanRoute = sharedPath;
+                        if (cleanRoute.startsWith('/Katale-')) {
+                            cleanRoute = cleanRoute.replace('/Katale-', '');
+                        }
+
+                        // Direct the frame to the specific dynamic storefront path or default home
+                        if (cleanRoute.includes('/user/')) {
+                            frame.src = BASE_URL + cleanRoute + sharedQuery;
+                        } else {
+                            frame.src = BASE_URL + (sharedQuery || "/");
+                        }
+
+                        frame.onload = function() {
+                            setTimeout(() => {
+                                frame.style.display = "block";
+                                loader.style.opacity = '0';
+                                // FIXED: Replaced invalid 0.4s syntax with safe 400ms value
+                                setTimeout(() => { loader.style.display = 'none'; }, 400); 
+                            }, 300);
+                        };
+                    }
+                } else {
+                    throw new Error("Invalid Engine Signature");
+                }
+            } catch (err) {
+                console.log("Signal Dropped. Safe Mode Engaged.");
+                appLoaded = false;
+                frame.style.display = "none";
+                loader.style.display = "flex";
+                loader.style.opacity = "1";
+                
+                progress = 95;
+                statusText.innerText = "waking up digital storefront (please wait)... 95%";
+            }
+            setTimeout(listenToSignal, 4500);
+        }
+
+        // Initialize Engine Monitoring System
+        listenToSignal();
+
+        // Background Message & Push Alerts Syncing Engines
+        async function checkIncomingNotifications() {
+            const savedUserStr = localStorage.getItem('currentUser');
+            if (!savedUserStr) return; 
+            const currentUser = JSON.parse(savedUserStr);
+            const myId = currentUser._id || currentUser.id;
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/messages/${myId}`);
+                if (!response.ok) return;
+
+                const messages = await response.json();
+                if (Array.isArray(messages) && messages.length > 0) {
+                    messages.forEach(m => {
+                        const msgUniqueId = m._id || m.id;
+                        if (!knownMessageIds.includes(msgUniqueId)) {
+                            knownMessageIds.push(msgUniqueId);
+                            if (!isFirstLoad) {
+                                triggerSystemBannerNotification(m.senderName, m.text);
+                            }
+                        }
+                    });
+                    isFirstLoad = false;
+                } else {
+                    isFirstLoad = false;
+                }
+            } catch (e) { 
+                console.error("Background notification sync error:", e); 
+            }
+        }
+
+        function triggerSystemBannerNotification(senderName, messageText) {
+            const banner = document.getElementById('android-push-banner');
+            const titleEl = document.getElementById('banner-title');
+            const textEl = document.getElementById('banner-text');
+
+            if (banner && titleEl && textEl) {
+                titleEl.innerText = `Message from ${senderName}`;
+                textEl.innerText = messageText;
+                banner.classList.add('show');
+                setTimeout(() => { banner.classList.remove('show'); }, 4500);
+            }
+
+            if ('serviceWorker' in navigator && Notification.permission === "granted") {
+                navigator.serviceWorker.ready.then(function(registration) {
+                    const savedUserStr = localStorage.getItem('currentUser');
+                    let avatarUrl = '/profile/default-avatar.png';
+                                
+                    if (savedUserStr) {
+                        const savedUser = JSON.parse(savedUserStr);
+                        if (savedUser.user_profile?.avatar) {
+                            avatarUrl = savedUser.user_profile.avatar;
+                        }
+                    }
+
+                    registration.showNotification(`Message from ${senderName}`, {
+                        body: messageText,
+                        icon: avatarUrl,  
+                        badge: avatarUrl, 
+                        vibrate: [200, 100, 200]
+                    });
+                });
+            }
+
+            const audio = document.getElementById('notif-sound');
+            if (audio) audio.play().catch(() => {});
+        }
+
+        function setup() {
+            if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+            
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                navigator.serviceWorker.register('/hizstar-sw.js')
+                .then(function(swReg) {
+                    console.log('Android Push Service Worker Registered successfully:', swReg);
+                    if (Notification.permission !== "granted") {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === "granted") console.log("Status Bar Alert Permissions Allowed.");
+                        });
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Service Worker Registration Error:', error);
+                });
+            }
+            
+            // Notification Background Tasks Loops Initialize
+            setTimeout(checkIncomingNotifications, 1000);
+            setInterval(checkIncomingNotifications, 4000);
+            setupNotifications();
+        }
+
+        async function setupNotifications() {
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
+                const { PushNotifications } = window.Capacitor.Plugins;
+                let permStatus = await PushNotifications.requestPermissions();
+                if (permStatus.receive === 'granted') {
+                    await PushNotifications.register();
+                }
+                PushNotifications.addListener('registration', (token) => {
+                    console.log('Push registration token: ', token.value);
+                });
+                PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                    console.log('Push received: ', notification);
+                });
+            }
+        }
+
+        window.addEventListener('load', setup);
+        window.parent.postMessage('trigger_ad_notification', '*');
+    </script>
+</body>
+</html>
