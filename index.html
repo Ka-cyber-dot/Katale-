@@ -65,8 +65,10 @@
             font-family: 'Helvetica', sans-serif;
             color: #4CAF50;
             font-size: 13px;
-            letter-spacing: 4px;
+            letter-spacing: 2px;
             text-transform: uppercase;
+            text-align: center;
+            padding: 0 20px;
         }
 
         #loading-dot { fill: #2E7D32; }
@@ -92,42 +94,99 @@
     <!-- Embedded Application Screen -->
     <iframe id="app-frame" src=""></iframe>
 
-<script>
-<script>
-    const BASE_URL = "https://My-businessi-app.onrender.com";
-    const SIGNAL_URL = BASE_URL + "/api/heartbeat";
-    
-    const loader = document.getElementById('loader-container');
-    const frame = document.getElementById('app-frame');
-    const statusText = document.getElementById('status-text');
+    <script>
+        const BASE_URL = "https://my-businessi-app.onrender.com";
+        const SIGNAL_URL = BASE_URL + "/api/heartbeat";
+        
+        const loader = document.getElementById('loader-container');
+        const frame = document.getElementById('app-frame');
+        const statusText = document.getElementById('status-text');
 
-    async function tryLoadApp() {
-        try {
-            console.log("Checking heartbeat...");
-            const response = await fetch(`${SIGNAL_URL}?t=${new Date().getTime()}`);
-            const data = await response.json();
+        let progress = 0;
+        let fakeLoader;
+        let appLoaded = false;
 
-            if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
-                if (frame.src === "") {
-                    console.log("Signal alive. Loading App...");
-                    frame.src = BASE_URL + (window.location.search || "/");
+        // Extract the exact path and parameters shared from WhatsApp (e.g., /user/664b3...)
+        const sharedPath = window.location.pathname; 
+        const sharedQuery = window.location.search;  
+
+        function runPercentage(targetSpeed, maxPercent, messagePrefix) {
+            clearInterval(fakeLoader);
+            fakeLoader = setInterval(() => {
+                if (progress < maxPercent) {
+                    progress++;
+                    statusText.innerText = `${messagePrefix || "prepairing make sure your internet is stable"} ${progress}%`;
                 }
-                
-                // Show frame
-                frame.style.display = "block";
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 500);
-            }
-        } catch (err) {
-            console.error("App load failed or server sleeping:", err);
-            statusText.innerText = "SERVER SLEEPING - WAKING UP...";
-            // Keep polling
-            setTimeout(tryLoadApp, 5000);
+            }, targetSpeed);
         }
-    }
 
-    // Initial check
-    tryLoadApp();
-</script>
+        // Initialize early visual percentage behaviors
+        runPercentage(15, 50);
+        setTimeout(() => { runPercentage(400, 90); }, 800);
+
+        async function listenToSignal() {
+            try {
+                // If it takes longer than 90% and hasn't loaded yet, Render is waking up!
+                if (!appLoaded && progress >= 90) {
+                    runPercentage(1200, 98, "waking up digital storefront (please wait)...");
+                }
+
+                // Fetch the small JSON verification payload from Render
+                const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
+                const data = await response.json();
+
+                // Check server signature engine integrity
+                if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
+                    
+                    if (!appLoaded) {
+                        appLoaded = true;
+                        clearInterval(fakeLoader);
+                        statusText.innerText = "workspace open 100%";
+                        
+                        // Clean up path variations if running out of a GitHub project subdirectory container
+                        let cleanRoute = sharedPath;
+                        if (cleanRoute.startsWith('/Katale-')) {
+                            cleanRoute = cleanRoute.replace('/Katale-', '');
+                        }
+
+                        // Combine path logic seamlessly to redirect the iframe to the shared store profile
+                        if (cleanRoute.includes('/user/')) {
+                            frame.src = BASE_URL + cleanRoute + sharedQuery;
+                        } else {
+                            frame.src = BASE_URL + (sharedQuery || "/");
+                        }
+
+                        frame.onload = function() {
+                            setTimeout(() => {
+                                frame.style.display = "block";
+                                loader.style.opacity = '0';
+                                setTimeout(() => { loader.style.display = 'none'; }, 0.4s);
+                            }, 300);
+                        };
+                    }
+                } else {
+                    throw new Error("Invalid Engine Signature");
+                }
+
+            } catch (err) {
+                console.log("Signal Dropped. Safe Mode Engaged.");
+                
+                // Keep the protective cover active if server connection drops or is booting
+                appLoaded = false;
+                frame.style.display = "none";
+                loader.style.display = "flex";
+                loader.style.opacity = "1";
+                
+                progress = 95;
+                statusText.innerText = "waking up digital storefront (please wait)... 95%";
+            }
+
+            // Keep tracking background signal pulses every 4.5 seconds
+            setTimeout(listenToSignal, 4500);
+        }
+
+        // Run Engine Monitoring
+        listenToSignal();
+    </script>
 </body>
 </html>
