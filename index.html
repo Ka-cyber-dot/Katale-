@@ -107,7 +107,7 @@
             try {
                 // If it hangs here, Render is waking up from sleep mode
                 if (!appLoaded && progress >= 90) {
-                    runPercentage(1000, 98, "waking up digital storefront (please wait)...");
+                    runPercentage(1000, 98, " almost  (please wait)...");
                 }
 
                 const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
@@ -145,7 +145,7 @@
                 loader.style.opacity = "1";
                 
                 progress = 95;
-                statusText.innerText = "waking up digital storefront (please wait)... 95%";
+                statusText.innerText = " (please wait)... 95% if the link seems not working try to reopen it , click it  again";
             }
             if (!appLoaded) {
                 setTimeout(listenToSignal, 4500);
