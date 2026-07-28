@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "hizstar.aplicjvg",
+      "sha256_cert_fingerprints": [
+        "BC:A7:9D:6D:DA:1C:F4:B4:59:03:AD:81:63:8F:3B:41:9A:86:62:B8:3E:ED:8F:60:94:52:5B:B9:E1:12:41:6C"
+      ]
+    }
+  }
+]
