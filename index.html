@@ -52,7 +52,6 @@
             text-align: center;
             padding: 0 20px;
         }
-        /* DIRECT APP LAUNCHER BUTTON FOR EDGE / WEBVIEWS */
         #launch-app-btn {
             display: none;
             margin-top: 25px;
@@ -84,17 +83,16 @@
         </svg>
 
         <div id="status-text">CONNECTING 0%</div>
-
-        <!-- THIS BUTTON GUARANTEES OVERRIDING BROWSER/WEBVIEW BLOCKS -->
         <a id="launch-app-btn" href="#">🚀 OPEN KATALE APP</a>
     </div>
 
     <script>
-        const BASE_URL = "https://my-businessi-app.onrender.com";
-        const SIGNAL_URL = BASE_URL + "/api/heartbeat";
-        const PACKAGE_NAME = "hizstar.aplicjvg"; // Your Android app package
-            
-        const loader = document.getElementById('loader-container');
+        // Render is ONLY used as a background API endpoint
+        const API_BASE_URL = "https://my-businessi-app.onrender.com";
+        const SIGNAL_URL = API_BASE_URL + "/api/heartbeat";
+        const PACKAGE_NAME = "hizstar.aplicjvg";
+        const GITHUB_HOST = "ka-cyber-dot.github.io";
+
         const statusText = document.getElementById('status-text');
         const launchBtn = document.getElementById('launch-app-btn');
 
@@ -102,15 +100,16 @@
         let fakeLoader;
         let appLoaded = false;
 
+        // Capture incoming route parameters locally
         const sharedPath = window.location.pathname;
         const sharedQuery = window.location.search;
 
-        function runPercentage(targetSpeed, maxPercent, messagePrefix) {
+        function runPercentage(targetSpeed, maxPercent) {
             clearInterval(fakeLoader);
             fakeLoader = setInterval(() => {
                 if (progress < maxPercent) {
                     progress++;
-                    statusText.innerText = `${messagePrefix || "CONNECTING"} ${progress}%`;
+                    statusText.innerText = `CONNECTING ${progress}%`;
                 }
             }, targetSpeed);
         }
@@ -118,23 +117,31 @@
         runPercentage(15, 50);
         setTimeout(() => { runPercentage(400, 90); }, 800);
 
-        // Build target destination route
-        let cleanRoute = sharedPath;
-        if (cleanRoute.startsWith('/Katale-')) {
-            cleanRoute = cleanRoute.replace('/Katale-', '');
-        }
-        let targetPath = (cleanRoute.includes('/user/')) ? cleanRoute + sharedQuery : (sharedQuery || "/");
-        let fullDestination = BASE_URL + targetPath;
+        // Build target URIs using ONLY GitHub domain and custom scheme
+        const customSchemeUrl = `hizstar://open${sharedPath}${sharedQuery}`;
+        const androidIntentUrl = `intent://${GITHUB_HOST}${sharedPath}${sharedQuery}#Intent;scheme=hizstar;package=${PACKAGE_NAME};S.browser_fallback_url=${encodeURIComponent(window.location.href)};end;`;
 
-        // Construct direct Android Intent string for Edge/WebViews
-        let androidIntentUrl = `intent://${BASE_URL.replace('https://', '')}${targetPath}#Intent;scheme=https;package=${PACKAGE_NAME};S.browser_fallback_url=${encodeURIComponent(fullDestination)};end;`;
+        function executeDeepLink() {
+            // Setup launch button for manual click/tap
+            launchBtn.href = customSchemeUrl;
+            launchBtn.style.display = "inline-block";
+
+            // 1. Try Custom Scheme directly
+            window.location.href = customSchemeUrl;
+
+            // 2. Fallback to Intent Scheme after brief delay
+            setTimeout(() => {
+                window.location.href = androidIntentUrl;
+            }, 500);
+        }
 
         async function listenToSignal() {
             try {
                 if (!appLoaded && progress >= 90) {
-                    runPercentage(1000, 98, "SERVER WAKING UP...");
+                    runPercentage(1000, 98);
                 }
 
+                // Check server health via API in background
                 const response = await fetch(SIGNAL_URL + "?t=" + Date.now());
                 const data = await response.json();
 
@@ -144,24 +151,18 @@
                         clearInterval(fakeLoader);
                         statusText.innerText = "READY!";
 
-                        // Setup launch button for manual tap
-                        launchBtn.href = androidIntentUrl;
-                        launchBtn.style.display = "inline-block";
-
-                        // Try standard automatic transfer
-                        window.location.replace(androidIntentUrl);
+                        executeDeepLink();
                     }
                 } else {
                     throw new Error("Invalid Engine Signature");
                 }
             } catch (err) {
-                console.log("Waiting for Render...");
+                console.log("Waiting for backend API...");
                 appLoaded = false;
                 progress = 95;
-                statusText.innerText = "TAP BELOW TO OPEN";
+                statusText.innerText = "TAP BELOW TO OPEN APP";
                 
-                // Show button as manual fallback
-                launchBtn.href = androidIntentUrl;
+                launchBtn.href = customSchemeUrl;
                 launchBtn.style.display = "inline-block";
             }
 
