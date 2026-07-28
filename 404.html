@@ -21,51 +21,50 @@
         }
         .card {
             background: #ffffff;
-            padding: 35px 25px;
+            padding: 30px 20px;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             max-width: 420px;
             width: 100%;
         }
-        .spinner {
-            border: 4px solid #e9ecef;
-            border-top: 4px solid #4CAF50;
-            border-radius: 50%;
-            width: 42px;
-            height: 42px;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
         .btn {
-            margin-top: 20px;
-            padding: 16px 32px;
+            margin-top: 15px;
+            padding: 16px 28px;
             background-color: #4CAF50;
             color: #ffffff;
             font-size: 15px;
             font-weight: bold;
             text-decoration: none;
             border-radius: 30px;
-            box-shadow: 0 4px 14px rgba(76, 175, 80, 0.35);
             display: inline-block;
-            transition: background-color 0.2s;
         }
-        .btn:hover {
-            background-color: #43A047;
+        /* Special banner for TikTok/Instagram webviews */
+        .webview-warning {
+            display: none;
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.4;
         }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <div id="spinner" class="spinner"></div>
+        <!-- Banner shown ONLY inside TikTok/Instagram/Facebook -->
+        <div id="webview-banner" class="webview-warning">
+            ⚠️ <strong>Opening from TikTok?</strong><br>
+            If the app doesn't open, tap the <strong>3 dots (⋮)</strong> at the top right and select <strong>"Open in Browser"</strong>.
+        </div>
+
         <h2 id="status-text" style="margin: 0 0 10px 0; color: #2e7d32;">Connecting...</h2>
         <p id="sub-text" style="margin: 0; color: #666; font-size: 14px;">Opening Katale App</p>
         
-        <a id="action-btn" class="btn" href="#">GET KATALE ON GOOGLE PLAY</a>
+        <a id="action-btn" class="btn" href="#">🚀 OPEN IN KATALE APP</a>
     </div>
 
     <script>
@@ -73,10 +72,17 @@
             const PACKAGE_NAME = "hizstar.aplicjvg";
             const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${PACKAGE_NAME}`;
 
-            // 1. Detect device type (Android phone vs Computer/Desktop)
-            const isAndroid = /Android/i.test(navigator.userAgent);
+            // Detect In-App WebViews (TikTok, Instagram, Facebook, Line, Twitter)
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            const isInAppWebView = /TikTok|musical_ly|FBAN|FBAV|Instagram|Line|Twitter/i.test(ua);
+            const isAndroid = /Android/i.test(ua);
 
-            // 2. Extract shop/user ID from URL path (/user/6a23d05623e13531872ea452) or query
+            // Show instruction banner if opened inside TikTok/Instagram
+            if (isInAppWebView) {
+                document.getElementById('webview-banner').style.display = 'block';
+            }
+
+            // Extract Shop ID
             const currentPath = window.location.pathname;
             const pathSegments = currentPath.split('/');
             const userIndex = pathSegments.indexOf('user');
@@ -90,62 +96,32 @@
             }
 
             const actionBtn = document.getElementById('action-btn');
-            const statusText = document.getElementById('status-text');
-            const subText = document.getElementById('sub-text');
-            const spinner = document.getElementById('spinner');
+            const targetHostPath = `ka-cyber-dot.github.io/Katale-/index2.html?shop=${shopId}`;
+            const intentUri = `intent://${targetHostPath}#Intent;scheme=https;package=${PACKAGE_NAME};S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end;`;
 
-            if (!isAndroid) {
-                // =========================================================
-                // COMPUTER / DESKTOP / NON-ANDROID FLOW
-                // =========================================================
-                statusText.innerText = "Katale on Google Play";
-                subText.innerText = "You are on a desktop browser. Redirecting to Google Play Store...";
-                actionBtn.innerText = "🛒 VIEW ON GOOGLE PLAY";
-                actionBtn.href = PLAY_STORE_URL;
+            actionBtn.href = intentUri;
 
-                // Directly take computer user to the Google Play web store
+            function launchApp() {
+                const startTime = Date.now();
+                window.location.href = intentUri;
+
+                // Fallback to Play Store if app is not installed
                 setTimeout(() => {
-                    window.location.href = PLAY_STORE_URL;
-                }, 1000);
+                    if (Date.now() - startTime < 2500) {
+                        window.location.href = PLAY_STORE_URL;
+                    }
+                }, 1500);
+            }
 
-            } else {
-                // =========================================================
-                // ANDROID MOBILE FLOW
-                // =========================================================
-                const targetHostPath = `ka-cyber-dot.github.io/Katale-/index2.html?shop=${shopId}`;
-                const intentUri = `intent://${targetHostPath}#Intent;scheme=https;package=${PACKAGE_NAME};S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end;`;
-
-                actionBtn.innerText = "🚀 OPEN IN KATALE APP";
-                actionBtn.href = intentUri;
-
-                function launchApp() {
-                    const startTime = Date.now();
-                    window.location.href = intentUri;
-
-                    // Fallback timer: If app is NOT installed on the phone, force redirect to Play Store
-                    setTimeout(() => {
-                        const elapsedTime = Date.now() - startTime;
-                        if (elapsedTime < 2500) {
-                            window.location.href = PLAY_STORE_URL;
-                        }
-                    }, 1500);
-                }
-
-                // Attempt auto-launch on page load
+            // In-app browsers require an EXPLICIT touch event
+            actionBtn.addEventListener('click', function(e) {
+                e.preventDefault();
                 launchApp();
+            });
 
-                // Direct tap event (bypasses browser security blocks on Android)
-                actionBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    launchApp();
-                });
-
-                // Update UI after 2 seconds if page remains open
-                setTimeout(() => {
-                    spinner.style.display = "none";
-                    statusText.innerText = "Open Katale App";
-                    subText.innerText = "If the app or Play Store didn't open automatically, tap below:";
-                }, 2000);
+            // Try auto-launch only if NOT in strict in-app browsers
+            if (isAndroid && !isInAppWebView) {
+                launchApp();
             }
         })();
     </script>
