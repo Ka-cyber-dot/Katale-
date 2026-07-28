@@ -14,7 +14,6 @@
             font-family: 'Arial Black', sans-serif;
             overflow: hidden;
         }
-        /* The Masking Screen */
         #loader-container {
             position: fixed;
             top: 0;
@@ -27,7 +26,6 @@
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            transition: opacity 0.4s ease;
         }
         .katale-text {
             font-size: 70px;
@@ -49,122 +47,130 @@
             font-family: 'Helvetica', sans-serif;
             color: #4CAF50;
             font-size: 13px;
-            letter-spacing: 4px;
+            letter-spacing: 2px;
             text-transform: uppercase;
             text-align: center;
             padding: 0 20px;
+        }
+        /* DIRECT APP LAUNCHER BUTTON FOR EDGE / WEBVIEWS */
+        #launch-app-btn {
+            display: none;
+            margin-top: 25px;
+            padding: 16px 32px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            font-family: 'Helvetica', sans-serif;
+            font-size: 15px;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 30px;
+            box-shadow: 0 4px 14px rgba(76, 175, 80, 0.4);
+            text-align: center;
         }
         #loading-dot { fill: #2E7D32; }
     </style>
 </head>
 <body>
     <div id="loader-container">
-    <svg width="320" height="260" viewBox="0 0 600 500">
-        <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
-        <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
-        <path id="infinityPath" d="M 135,180 C 250,-50 250,550 465,180" fill="none" stroke="transparent" />
-        <circle id="loading-dot" r="14">
-            <animateMotion dur="2.2s" repeatCount="indefinite" rotate="auto">
-                <mpath href="#infinityPath" />
-            </animateMotion>
-        </circle>
-    </svg>
-    <div id="status-text">CONNECTING 0%</div>
-    
-    <!-- FALLBACK BUTTON FOR EDGE / WEBVIEWS -->
-    <a id="continue-btn" style="display:none; margin-top:20px; padding:12px 24px; background-color:#4CAF50; color:#fff; text-decoration:none; border-radius:25px; font-weight:bold; font-size:14px;" href="#">
-        CLICK TO CONTINUE TO APP
-    </a>
-</div>
+        <svg width="320" height="260" viewBox="0 0 600 500">
+            <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
+            <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
+            <path id="infinityPath" d="M 135,180 C 250,-50 250,550 465,180" fill="none" stroke="transparent" />
+            <circle id="loading-dot" r="14">
+                <animateMotion dur="2.2s" repeatCount="indefinite" rotate="auto">
+                    <mpath href="#infinityPath" />
+                </animateMotion>
+            </circle>
+        </svg>
 
-<script>
-    const BASE_URL = "https://my-businessi-app.onrender.com";
-    const SIGNAL_URL = BASE_URL + "/api/heartbeat";
-    const PACKAGE_NAME = "hizstar.aplicjvg"; // Your Android package
-        
-    const loader = document.getElementById('loader-container');
-    const statusText = document.getElementById('status-text');
-    const continueBtn = document.getElementById('continue-btn');
+        <div id="status-text">CONNECTING 0%</div>
 
-    let progress = 0;
-    let fakeLoader;
-    let appLoaded = false;
+        <!-- THIS BUTTON GUARANTEES OVERRIDING BROWSER/WEBVIEW BLOCKS -->
+        <a id="launch-app-btn" href="#">🚀 OPEN KATALE APP</a>
+    </div>
 
-    const sharedPath = window.location.pathname;
-    const sharedQuery = window.location.search;
-
-    function runPercentage(targetSpeed, maxPercent, messagePrefix) {
-        clearInterval(fakeLoader);
-        fakeLoader = setInterval(() => {
-            if (progress < maxPercent) {
-                progress++;
-                statusText.innerText = `${messagePrefix || "PREPARING"} ${progress}%`;
-            }
-        }, targetSpeed);
-    }
-
-    runPercentage(15, 50);
-    setTimeout(() => { runPercentage(400, 90); }, 800);
-
-    // Build the destination target
-    let cleanRoute = sharedPath.startsWith('/Katale-') ? sharedPath.replace('/Katale-', '') : sharedPath;
-    let targetPath = (cleanRoute.includes('/user/')) ? cleanRoute + sharedQuery : (sharedQuery || "/");
-    let targetDestination = BASE_URL + targetPath;
-
-    // Generate Android Intent Link for breaking out of restricted WebViews / Edge
-    let androidIntentUrl = `intent://${BASE_URL.replace('https://', '')}${targetPath}#Intent;scheme=https;package=${PACKAGE_NAME};end;`;
-
-    async function listenToSignal() {
-        try {
-            if (!appLoaded && progress >= 90) {
-                runPercentage(1000, 98, "CONNECTING...");
-            }
-
-            const response = await fetch(SIGNAL_URL + "?t=" + Date.now(), { credentials: 'omit' });
-            const data = await response.json();
-
-            if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
-                if (!appLoaded) {
-                    appLoaded = true;
-                    clearInterval(fakeLoader);
-                    statusText.innerText = "OPENING... 100%";
-
-                    // Show fallback button in case WebView/Edge blocks auto-redirect
-                    continueBtn.href = isAndroidWebView() ? androidIntentUrl : targetDestination;
-                    continueBtn.style.display = "inline-block";
-
-                    // Try automatic window replacement
-                    if (isAndroidWebView()) {
-                        window.location.replace(androidIntentUrl);
-                    } else {
-                        window.location.replace(targetDestination);
-                    }
-                }
-            } else {
-                throw new Error("Invalid Engine Signature");
-            }
-        } catch (err) {
-            console.log("Signal Dropped. Safe Mode Engaged.");
-            appLoaded = false;
-            progress = 95;
-            statusText.innerText = "PLEASE WAIT... TAP BELOW IF LINK STALLS";
+    <script>
+        const BASE_URL = "https://my-businessi-app.onrender.com";
+        const SIGNAL_URL = BASE_URL + "/api/heartbeat";
+        const PACKAGE_NAME = "hizstar.aplicjvg"; // Your Android app package
             
-            // Show manual button if automatic load fails or hangs
-            continueBtn.href = targetDestination;
-            continueBtn.style.display = "inline-block";
+        const loader = document.getElementById('loader-container');
+        const statusText = document.getElementById('status-text');
+        const launchBtn = document.getElementById('launch-app-btn');
+
+        let progress = 0;
+        let fakeLoader;
+        let appLoaded = false;
+
+        const sharedPath = window.location.pathname;
+        const sharedQuery = window.location.search;
+
+        function runPercentage(targetSpeed, maxPercent, messagePrefix) {
+            clearInterval(fakeLoader);
+            fakeLoader = setInterval(() => {
+                if (progress < maxPercent) {
+                    progress++;
+                    statusText.innerText = `${messagePrefix || "CONNECTING"} ${progress}%`;
+                }
+            }, targetSpeed);
         }
 
-        if (!appLoaded) {
-            setTimeout(listenToSignal, 3500);
+        runPercentage(15, 50);
+        setTimeout(() => { runPercentage(400, 90); }, 800);
+
+        // Build target destination route
+        let cleanRoute = sharedPath;
+        if (cleanRoute.startsWith('/Katale-')) {
+            cleanRoute = cleanRoute.replace('/Katale-', '');
         }
-    }
+        let targetPath = (cleanRoute.includes('/user/')) ? cleanRoute + sharedQuery : (sharedQuery || "/");
+        let fullDestination = BASE_URL + targetPath;
 
-    function isAndroidWebView() {
-        const ua = navigator.userAgent || navigator.vendor || window.opera;
-        return /Android/i.test(ua) && (/wv/i.test(ua) || /FBAN/i.test(ua) || /FBAV/i.test(ua) || /EdgA/i.test(ua));
-    }
+        // Construct direct Android Intent string for Edge/WebViews
+        let androidIntentUrl = `intent://${BASE_URL.replace('https://', '')}${targetPath}#Intent;scheme=https;package=${PACKAGE_NAME};S.browser_fallback_url=${encodeURIComponent(fullDestination)};end;`;
 
-    listenToSignal();
-</script>
+        async function listenToSignal() {
+            try {
+                if (!appLoaded && progress >= 90) {
+                    runPercentage(1000, 98, "SERVER WAKING UP...");
+                }
+
+                const response = await fetch(SIGNAL_URL + "?t=" + Date.now());
+                const data = await response.json();
+
+                if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
+                    if (!appLoaded) {
+                        appLoaded = true;
+                        clearInterval(fakeLoader);
+                        statusText.innerText = "READY!";
+
+                        // Setup launch button for manual tap
+                        launchBtn.href = androidIntentUrl;
+                        launchBtn.style.display = "inline-block";
+
+                        // Try standard automatic transfer
+                        window.location.replace(androidIntentUrl);
+                    }
+                } else {
+                    throw new Error("Invalid Engine Signature");
+                }
+            } catch (err) {
+                console.log("Waiting for Render...");
+                appLoaded = false;
+                progress = 95;
+                statusText.innerText = "TAP BELOW TO OPEN";
+                
+                // Show button as manual fallback
+                launchBtn.href = androidIntentUrl;
+                launchBtn.style.display = "inline-block";
+            }
+
+            if (!appLoaded) {
+                setTimeout(listenToSignal, 3500);
+            }
+        }
+
+        listenToSignal();
+    </script>
 </body>
 </html>
