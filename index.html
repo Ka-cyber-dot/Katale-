@@ -2,176 +2,90 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KATALE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katale - Opening App...</title>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            background-color: #ffffff;
-            font-family: 'Arial Black', sans-serif;
-            overflow: hidden;
-        }
-        #loader-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #ffffff;
+        body {
+            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 9999;
+            height: 100vh;
+            margin: 0;
+            background-color: #ffffff;
+            color: #333;
         }
-        .katale-text {
-            font-size: 70px;
-            font-weight: 900;
-            fill: #4CAF50;
-            letter-spacing: 2px;
-            filter: drop-shadow(0 2px 0 #388E3C) 
-                    drop-shadow(0 4px 0 #2E7D32) 
-                    drop-shadow(0 12px 10px rgba(0,0,0,0.15));
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
         }
-        .hizstar-text {
-            font-size: 14px;
-            fill: #a5d6a7;
-            letter-spacing: 10px;
-            text-transform: lowercase;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        #status-text {
-            margin-top: 15px;
-            font-family: 'Helvetica', sans-serif;
-            color: #4CAF50;
-            font-size: 13px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            text-align: center;
-            padding: 0 20px;
-        }
-        #launch-app-btn {
-            display: none;
-            margin-top: 25px;
-            padding: 16px 32px;
+        a.manual-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
             background-color: #4CAF50;
-            color: #ffffff;
-            font-family: 'Helvetica', sans-serif;
-            font-size: 15px;
-            font-weight: bold;
+            color: white;
             text-decoration: none;
-            border-radius: 30px;
-            box-shadow: 0 4px 14px rgba(76, 175, 80, 0.4);
-            text-align: center;
+            border-radius: 20px;
+            font-weight: bold;
         }
-        #loading-dot { fill: #2E7D32; }
     </style>
 </head>
 <body>
-    <div id="loader-container">
-        <svg width="320" height="260" viewBox="0 0 600 500">
-            <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
-            <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
-            <path id="infinityPath" d="M 135,180 C 250,-50 250,550 465,180" fill="none" stroke="transparent" />
-            <circle id="loading-dot" r="14">
-                <animateMotion dur="2.2s" repeatCount="indefinite" rotate="auto">
-                    <mpath href="#infinityPath" />
-                </animateMotion>
-            </circle>
-        </svg>
 
-        <div id="status-text">CONNECTING 0%</div>
-        <a id="launch-app-btn" href="#">🚀 OPEN KATALE APP</a>
-    </div>
+    <div class="loader"></div>
+    <p id="status-text">Opening Katale App...</p>
+    <a id="fallback-btn" class="manual-btn" style="display:none;" href="#">Open Katale App</a>
 
     <script>
-        // Render is ONLY used as a background API endpoint
-        const API_BASE_URL = "https://my-businessi-app.onrender.com";
-        const SIGNAL_URL = API_BASE_URL + "/api/heartbeat";
-        const PACKAGE_NAME = "hizstar.aplicjvg";
-        const GITHUB_HOST = "ka-cyber-dot.github.io";
+        (function redirectToApp() {
+            const playStoreUrl = "https://play.google.com/store/apps/details?id=hizstar.aplicjvg";
+            
+            // 1. Extract path from URL (e.g., /Katale-/user/6a23d05623e13531872ea452)
+            const currentPath = window.location.pathname;
+            const pathSegments = currentPath.split('/');
+            
+            // Find where 'user' is located in the path
+            const userIndex = pathSegments.indexOf('user');
+            let targetShopId = null;
 
-        const statusText = document.getElementById('status-text');
-        const launchBtn = document.getElementById('launch-app-btn');
-
-        let progress = 0;
-        let fakeLoader;
-        let appLoaded = false;
-
-        // Capture incoming route parameters locally
-        const sharedPath = window.location.pathname;
-        const sharedQuery = window.location.search;
-
-        function runPercentage(targetSpeed, maxPercent) {
-            clearInterval(fakeLoader);
-            fakeLoader = setInterval(() => {
-                if (progress < maxPercent) {
-                    progress++;
-                    statusText.innerText = `CONNECTING ${progress}%`;
-                }
-            }, targetSpeed);
-        }
-
-        runPercentage(15, 50);
-        setTimeout(() => { runPercentage(400, 90); }, 800);
-
-        // Build target URIs using ONLY GitHub domain and custom scheme
-        const customSchemeUrl = `hizstar://open${sharedPath}${sharedQuery}`;
-        const androidIntentUrl = `intent://${GITHUB_HOST}${sharedPath}${sharedQuery}#Intent;scheme=hizstar;package=${PACKAGE_NAME};S.browser_fallback_url=${encodeURIComponent(window.location.href)};end;`;
-
-        function executeDeepLink() {
-            // Setup launch button for manual click/tap
-            launchBtn.href = customSchemeUrl;
-            launchBtn.style.display = "inline-block";
-
-            // 1. Try Custom Scheme directly
-            window.location.href = customSchemeUrl;
-
-            // 2. Fallback to Intent Scheme after brief delay
-            setTimeout(() => {
-                window.location.href = androidIntentUrl;
-            }, 500);
-        }
-
-        async function listenToSignal() {
-            try {
-                if (!appLoaded && progress >= 90) {
-                    runPercentage(1000, 98);
-                }
-
-                // Check server health via API in background
-                const response = await fetch(SIGNAL_URL + "?t=" + Date.now());
-                const data = await response.json();
-
-                if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
-                    if (!appLoaded) {
-                        appLoaded = true;
-                        clearInterval(fakeLoader);
-                        statusText.innerText = "READY!";
-
-                        executeDeepLink();
-                    }
-                } else {
-                    throw new Error("Invalid Engine Signature");
-                }
-            } catch (err) {
-                console.log("Waiting for backend API...");
-                appLoaded = false;
-                progress = 95;
-                statusText.innerText = "TAP BELOW TO OPEN APP";
-                
-                launchBtn.href = customSchemeUrl;
-                launchBtn.style.display = "inline-block";
+            if (userIndex !== -1 && pathSegments[userIndex + 1]) {
+                targetShopId = pathSegments[userIndex + 1];
+            } else {
+                // Fallback check for query parameter ?shop= or ?id=
+                const urlParams = new URLSearchParams(window.location.search);
+                targetShopId = urlParams.get('shop') || urlParams.get('id');
             }
 
-            if (!appLoaded) {
-                setTimeout(listenToSignal, 3500);
-            }
-        }
+            // 2. If a valid shop ID was found, construct your native intent URI
+            if (targetShopId) {
+                const nativeAppIntentUri = `intent://ka-cyber-dot.github.io/Katale-/index2.html?shop=${targetShopId}#Intent;scheme=https;package=hizstar.aplicjvg;S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end`;
 
-        listenToSignal();
+                // Set fallback button target
+                const fallbackBtn = document.getElementById('fallback-btn');
+                fallbackBtn.href = nativeAppIntentUri;
+
+                // Attempt immediate client-side redirection
+                window.location.replace(nativeAppIntentUri);
+
+                // Show manual button after 1.5s if browser blocks automatic intent jump
+                setTimeout(() => {
+                    document.getElementById('status-text').innerText = "Tap below if the app didn't open automatically:";
+                    fallbackBtn.style.display = "inline-block";
+                }, 1500);
+            } else {
+                // Default fallback if no ID is present
+                window.location.replace(playStoreUrl);
+            }
+        })();
     </script>
 </body>
 </html>
