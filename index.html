@@ -66,21 +66,21 @@
 
     <div class="card">
         <div id="tiktok-notice" class="tiktok-notice">
-            ⚡ Quick Launch Mode Active
+            ⚡ Redirecting to Katale App...
         </div>
 
         <h2 id="status-text" style="margin: 0 0 8px 0; color: #2e7d32; font-size: 22px;">Katale Shop</h2>
-        <p id="sub-text" style="margin: 0 0 20px 0; color: #666; font-size: 14px;">Tap below to view this item</p>
+        <p id="sub-text" style="margin: 0 0 20px 0; color: #666; font-size: 14px;">Opening Katale App...</p>
         
-        <!-- Primary App Button -->
+        <!-- Primary App Launch Button -->
         <a id="app-btn" class="btn btn-primary" href="#">🚀 OPEN IN KATALE APP</a>
         
-        <!-- Secondary Direct Play Store Button -->
+        <!-- Secondary Fallback Button -->
         <a id="store-btn" class="btn btn-secondary" href="#">🛒 GET IT ON GOOGLE PLAY</a>
     </div>
 
     <script>
-        (function fastRedirect() {
+        (function enforceAppLaunch() {
             const PACKAGE_NAME = "hizstar.aplicjvg";
             const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${PACKAGE_NAME}`;
 
@@ -88,7 +88,7 @@
             const isTikTok = /TikTok|musical_ly/i.test(ua);
             const isAndroid = /Android/i.test(ua);
 
-            // Extract Shop/User ID
+            // Extract Shop / User ID from URL
             const currentPath = window.location.pathname;
             const pathSegments = currentPath.split('/');
             const userIndex = pathSegments.indexOf('user');
@@ -104,48 +104,49 @@
             const appBtn = document.getElementById('app-btn');
             const storeBtn = document.getElementById('store-btn');
             const tiktokNotice = document.getElementById('tiktok-notice');
-            const statusText = document.getElementById('status-text');
 
+            // Strict Intent URI forcing package match to hizstar.aplicjvg
             const targetHostPath = `ka-cyber-dot.github.io/Katale-/index2.html?shop=${shopId}`;
-            const intentUri = `intent://${targetHostPath}#Intent;scheme=https;package=${PACKAGE_NAME};S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end;`;
+            const intentUri = `intent://${targetHostPath}#Intent;scheme=https;package=${PACKAGE_NAME};action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end;`;
 
-            // Always configure direct Play Store link for quick fallback
             storeBtn.href = PLAY_STORE_URL;
             appBtn.href = intentUri;
 
-            function triggerLaunch() {
-                // Give instant visual feedback to the user
+            function launchApp() {
                 appBtn.innerText = "⏳ Opening Katale...";
-                appBtn.style.opacity = "0.7";
+                appBtn.style.opacity = "0.8";
 
                 const startTime = Date.now();
+                
+                // Enforce launch attempt
                 window.location.href = intentUri;
 
-                // Ultra-fast fallback: If app isn't installed, switch to Play Store in 600ms
+                // Fallback Timer: If app isn't installed (user remains on web page), go to Play Store
                 setTimeout(() => {
                     if (Date.now() - startTime < 1500) {
                         window.location.href = PLAY_STORE_URL;
                     }
-                }, 600);
+                }, 700);
             }
 
+            // Direct tap event (bypasses browser security locks)
             appBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                triggerLaunch();
+                launchApp();
             });
 
-            if (isTikTok) {
-                // =========================================================
-                // TIKTOK SPECIFIC: NO AUTO-LAUNCH ON LOAD (Prevents hanging)
-                // =========================================================
-                tiktokNotice.style.display = 'block';
-                statusText.innerText = "Open Katale";
-            } else if (isAndroid) {
-                // Standard Android Browsers (Chrome, Edge): Safe to auto-launch
-                triggerLaunch();
-            } else {
-                // PC / Desktop Browser: Take straight to Play Store
+            if (!isAndroid) {
+                // Desktop Browser: Go straight to Google Play Store web page
                 window.location.href = PLAY_STORE_URL;
+            } else {
+                if (isTikTok) {
+                    tiktokNotice.style.display = 'block';
+                }
+
+                // Enforce auto-launch 100ms after DOM is fully loaded
+                setTimeout(() => {
+                    launchApp();
+                }, 100);
             }
         })();
     </script>
