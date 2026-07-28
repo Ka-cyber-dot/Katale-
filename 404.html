@@ -59,211 +59,112 @@
 </head>
 <body>
     <div id="loader-container">
-        <svg width="320" height="260" viewBox="0 0 600 500">
-            <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
-            <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
-            <path id="infinityPath" d="M 135,180 C 250,-50 250,550 465,180" fill="none" stroke="transparent" />
-            <circle id="loading-dot" r="14">
-                <animateMotion dur="2.2s" repeatCount="indefinite" rotate="auto">
-                    <mpath href="#infinityPath" />
-                </animateMotion>
-            </circle>
-        </svg>
-        <div id="status-text">CONNECTING 0%</div>
-    </div>
+    <svg width="320" height="260" viewBox="0 0 600 500">
+        <text x="50%" y="250" text-anchor="middle" class="katale-text">KATALE</text>
+        <text x="50%" y="315" text-anchor="middle" class="hizstar-text">hizstar</text>
+        <path id="infinityPath" d="M 135,180 C 250,-50 250,550 465,180" fill="none" stroke="transparent" />
+        <circle id="loading-dot" r="14">
+            <animateMotion dur="2.2s" repeatCount="indefinite" rotate="auto">
+                <mpath href="#infinityPath" />
+            </animateMotion>
+        </circle>
+    </svg>
+    <div id="status-text">CONNECTING 0%</div>
+    
+    <!-- FALLBACK BUTTON FOR EDGE / WEBVIEWS -->
+    <a id="continue-btn" style="display:none; margin-top:20px; padding:12px 24px; background-color:#4CAF50; color:#fff; text-decoration:none; border-radius:25px; font-weight:bold; font-size:14px;" href="#">
+        CLICK TO CONTINUE TO APP
+    </a>
+</div>
 
-    <script>
-        const BASE_URL = "https://my-businessi-app.onrender.com";
-        const SIGNAL_URL = BASE_URL + "/api/heartbeat";
-                
-        const loader = document.getElementById('loader-container');
-        const statusText = document.getElementById('status-text');
+<script>
+    const BASE_URL = "https://my-businessi-app.onrender.com";
+    const SIGNAL_URL = BASE_URL + "/api/heartbeat";
+    const PACKAGE_NAME = "hizstar.aplicjvg"; // Your Android package
+        
+    const loader = document.getElementById('loader-container');
+    const statusText = document.getElementById('status-text');
+    const continueBtn = document.getElementById('continue-btn');
 
-        let progress = 0;
-        let fakeLoader;
-        let appLoaded = false;
-        let knownMessageIds = [];
-        let isFirstLoad = true;
+    let progress = 0;
+    let fakeLoader;
+    let appLoaded = false;
 
-        // Capture incoming paths and dynamic user IDs passed via GitHub Pages
-        const sharedPath = window.location.pathname;
-        const sharedQuery = window.location.search;
+    const sharedPath = window.location.pathname;
+    const sharedQuery = window.location.search;
 
-        function runPercentage(targetSpeed, maxPercent, messagePrefix) {
-            clearInterval(fakeLoader);
-            fakeLoader = setInterval(() => {
-                if (progress < maxPercent) {
-                    progress++;
-                    statusText.innerText = `${messagePrefix || "preparing if it is not working give ways and copy link into another browser or try to click the link again"} ${progress}%`;
-                }
-            }, targetSpeed);
-        }
+    function runPercentage(targetSpeed, maxPercent, messagePrefix) {
+        clearInterval(fakeLoader);
+        fakeLoader = setInterval(() => {
+            if (progress < maxPercent) {
+                progress++;
+                statusText.innerText = `${messagePrefix || "PREPARING"} ${progress}%`;
+            }
+        }, targetSpeed);
+    }
 
-        // Initialize display loaders
-        runPercentage(15, 50);
-        setTimeout(() => { runPercentage(400, 90); }, 800);
+    runPercentage(15, 50);
+    setTimeout(() => { runPercentage(400, 90); }, 800);
 
-        async function listenToSignal() {
-            try {
-                // If it hangs here, Render is waking up from sleep mode
-                if (!appLoaded && progress >= 90) {
-                    runPercentage(1000, 98, " almost  (please wait)...");
-                }
+    // Build the destination target
+    let cleanRoute = sharedPath.startsWith('/Katale-') ? sharedPath.replace('/Katale-', '') : sharedPath;
+    let targetPath = (cleanRoute.includes('/user/')) ? cleanRoute + sharedQuery : (sharedQuery || "/");
+    let targetDestination = BASE_URL + targetPath;
 
-                const response = await fetch(SIGNAL_URL + "?t=" + new Date().getTime());
-                const data = await response.json();
+    // Generate Android Intent Link for breaking out of restricted WebViews / Edge
+    let androidIntentUrl = `intent://${BASE_URL.replace('https://', '')}${targetPath}#Intent;scheme=https;package=${PACKAGE_NAME};end;`;
 
-                if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
-                    if (!appLoaded) {
-                        appLoaded = true;
-                        clearInterval(fakeLoader);
-                        statusText.innerText = "work space open 100%";
+    async function listenToSignal() {
+        try {
+            if (!appLoaded && progress >= 90) {
+                runPercentage(1000, 98, "CONNECTING...");
+            }
 
-                        // Clean out GitHub project subdirectory names if present
-                        let cleanRoute = sharedPath;
-                        if (cleanRoute.startsWith('/Katale-')) {
-                            cleanRoute = cleanRoute.replace('/Katale-', '');
-                        }
+            const response = await fetch(SIGNAL_URL + "?t=" + Date.now(), { credentials: 'omit' });
+            const data = await response.json();
 
-                        // FIXED: No longer using iframe frame.src! 
-                        // We do a direct window redirect. This allows the Play Store intents to resolve properly!
-                        let targetDestination = BASE_URL + (sharedQuery || "/");
-                        if (cleanRoute.includes('/user/')) {
-                            targetDestination = BASE_URL + cleanRoute + sharedQuery;
-                        }
+            if (data && data.signature === "HIZSTAR_ENGINE_FRESH_START") {
+                if (!appLoaded) {
+                    appLoaded = true;
+                    clearInterval(fakeLoader);
+                    statusText.innerText = "OPENING... 100%";
 
-                        // Instant window transfer
-                        window.location.href = targetDestination;
+                    // Show fallback button in case WebView/Edge blocks auto-redirect
+                    continueBtn.href = isAndroidWebView() ? androidIntentUrl : targetDestination;
+                    continueBtn.style.display = "inline-block";
+
+                    // Try automatic window replacement
+                    if (isAndroidWebView()) {
+                        window.location.replace(androidIntentUrl);
+                    } else {
+                        window.location.replace(targetDestination);
                     }
-                } else {
-                    throw new Error("Invalid Engine Signature");
                 }
-            } catch (err) {
-                console.log("Signal Dropped. Safe Mode Engaged.");
-                appLoaded = false;
-                loader.style.display = "flex";
-                loader.style.opacity = "1";
-                
-                progress = 95;
-                statusText.innerText = " (please wait)... 95% if the link seems not working try to reopen it , click it  again";
+            } else {
+                throw new Error("Invalid Engine Signature");
             }
-            if (!appLoaded) {
-                setTimeout(listenToSignal, 4500);
-            }
-        }
-
-        // Initialize Engine Monitoring System
-        listenToSignal();
-
-        // Background Message & Push Alerts Syncing Engines
-        async function checkIncomingNotifications() {
-            const savedUserStr = localStorage.getItem('currentUser');
-            if (!savedUserStr) return; 
-            const currentUser = JSON.parse(savedUserStr);
-            const myId = currentUser._id || currentUser.id;
-
-            try {
-                const response = await fetch(`${BASE_URL}/api/messages/${myId}`);
-                if (!response.ok) return;
-
-                const messages = await response.json();
-                if (Array.isArray(messages) && messages.length > 0) {
-                    messages.forEach(m => {
-                        const msgUniqueId = m._id || m.id;
-                        if (!knownMessageIds.includes(msgUniqueId)) {
-                            knownMessageIds.push(msgUniqueId);
-                            if (!isFirstLoad) {
-                                triggerSystemBannerNotification(m.senderName, m.text);
-                            }
-                        }
-                    });
-                    isFirstLoad = false;
-                } else {
-                    isFirstLoad = false;
-                }
-            } catch (e) { 
-                console.error("Background notification sync error:", e); 
-            }
-        }
-
-        function triggerSystemBannerNotification(senderName, messageText) {
-            const banner = document.getElementById('android-push-banner');
-            const titleEl = document.getElementById('banner-title');
-            const textEl = document.getElementById('banner-text');
-
-            if (banner && titleEl && textEl) {
-                titleEl.innerText = `Message from ${senderName}`;
-                textEl.innerText = messageText;
-                banner.classList.add('show');
-                setTimeout(() => { banner.classList.remove('show'); }, 4500);
-            }
-
-            if ('serviceWorker' in navigator && Notification.permission === "granted") {
-                navigator.serviceWorker.ready.then(function(registration) {
-                    const savedUserStr = localStorage.getItem('currentUser');
-                    let avatarUrl = '/profile/default-avatar.png';
-                                
-                    if (savedUserStr) {
-                        const savedUser = JSON.parse(savedUserStr);
-                        if (savedUser.user_profile?.avatar) {
-                            avatarUrl = savedUser.user_profile.avatar;
-                        }
-                    }
-
-                    registration.showNotification(`Message from ${senderName}`, {
-                        body: messageText,
-                        icon: avatarUrl,  
-                        badge: avatarUrl, 
-                        vibrate: [200, 100, 200]
-                    });
-                });
-            }
-
-            const audio = document.getElementById('notif-sound');
-            if (audio) audio.play().catch(() => {});
-        }
-
-        function setup() {
-            if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        } catch (err) {
+            console.log("Signal Dropped. Safe Mode Engaged.");
+            appLoaded = false;
+            progress = 95;
+            statusText.innerText = "PLEASE WAIT... TAP BELOW IF LINK STALLS";
             
-            if ('serviceWorker' in navigator && 'PushManager' in window) {
-                navigator.serviceWorker.register('/hizstar-sw.js')
-                .then(function(swReg) {
-                    console.log('Android Push Service Worker Registered successfully:', swReg);
-                    if (Notification.permission !== "granted") {
-                        Notification.requestPermission().then(permission => {
-                            if (permission === "granted") console.log("Status Bar Alert Permissions Allowed.");
-                        });
-                    }
-                })
-                .catch(function(error) {
-                    console.error('Service Worker Registration Error:', error);
-                });
-            }
-            
-            setTimeout(checkIncomingNotifications, 1000);
-            setInterval(checkIncomingNotifications, 4000);
-            setupNotifications();
+            // Show manual button if automatic load fails or hangs
+            continueBtn.href = targetDestination;
+            continueBtn.style.display = "inline-block";
         }
 
-        async function setupNotifications() {
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
-                const { PushNotifications } = window.Capacitor.Plugins;
-                let permStatus = await PushNotifications.requestPermissions();
-                if (permStatus.receive === 'granted') {
-                    await PushNotifications.register();
-                }
-                PushNotifications.addListener('registration', (token) => {
-                    console.log('Push registration token: ', token.value);
-                });
-                PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                    console.log('Push received: ', notification);
-                });
-            }
+        if (!appLoaded) {
+            setTimeout(listenToSignal, 3500);
         }
+    }
 
-        window.addEventListener('load', setup);
-        window.parent.postMessage('trigger_ad_notification', '*');
-    </script>
+    function isAndroidWebView() {
+        const ua = navigator.userAgent || navigator.vendor || window.opera;
+        return /Android/i.test(ua) && (/wv/i.test(ua) || /FBAN/i.test(ua) || /FBAV/i.test(ua) || /EdgA/i.test(ua));
+    }
+
+    listenToSignal();
+</script>
 </body>
 </html>
