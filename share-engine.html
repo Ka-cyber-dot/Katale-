@@ -44,7 +44,7 @@
 
         <div class="total-row">
             <span>TOTAL PAID</span>
-            <span id="out-total"></span>
+            <span><span class="curr-symbol"></span> <span id="out-total"></span></span>
         </div>
     </div>
 
@@ -53,7 +53,11 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         
-        // 1. Process and load the User Cloudinary Banner
+        // Dynamic Currency Extraction
+        const currency = urlParams.get('currency') || "Ugx";
+        document.querySelectorAll('.curr-symbol').forEach(el => el.innerText = currency);
+
+        // 1. Process and load User Cloudinary Banner
         const logo = urlParams.get('logo');
         if(logo && logo.trim() !== "" && logo !== "undefined") {
             document.getElementById('user-banner').src = logo;
@@ -62,10 +66,10 @@
 
         // 2. Load Invoice Variables
         document.getElementById('out-customer').innerText = urlParams.get('customer') || "Walk-in";
-        document.getElementById('out-total').innerText = urlParams.get('total');
-        document.getElementById('out-date').innerText = urlParams.get('date');
+        document.getElementById('out-total').innerText = urlParams.get('total') || "0.00";
+        document.getElementById('out-date').innerText = urlParams.get('date') || new Date().toLocaleDateString();
 
-        // 3. Compile items safely (Solves the missing items bug)
+        // 3. Compile items safely using dynamic currency
         try {
             const encodedItems = urlParams.get('items');
             if(encodedItems) {
@@ -79,7 +83,7 @@
                         html += `<tr>
                             <td>${name}</td>
                             <td style="text-align:center">${qty}</td>
-                            <td style="text-align:right"><b>$${total}</b></td>
+                            <td style="text-align:right"><b>${currency} ${total}</b></td>
                         </tr>`;
                     }
                 });
